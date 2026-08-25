@@ -1,0 +1,39 @@
+# Dossiers générés par Unity — ne jamais committer
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+ExportedObj/
+crashlytics-build.properties
+sysinfo.txt
+*.stackdump
+
+# Projets IDE générés à partir des asmdef — régénérés par Unity
+*.csproj
+*.sln
+*.user
+*.pidb
+*.booproj
+*.svd
+*.mdb
+*.opendb
+*.VC.db
+
+# IDE / OS
+.idea/
+.vs/
+.vscode/
+.utmp/
+.DS_Store
+Thumbs.db
+
+# Builds mobiles
+*.apk
+*.aab
+*.unitypackage
+*.app
