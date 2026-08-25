@@ -40,10 +40,13 @@ namespace Devside.FishingIdle.Core.Tests
                 money = 123, rawFish = 45, lifetimeMoney = 4_000_000, autoSellUnlocked = true,
             };
             state.GetOrCreateProducer("fisher").count = 10;
+            state.discoveredSpecies.Add("sardine");
 
             int gained = Prestige.Execute(config, state);
 
             Assert.That(gained, Is.EqualTo(2));
+            Assert.That(state.discoveredSpecies, Does.Contain("sardine"),
+                "le Poissodex survit au prestige");
             Assert.That(state.prestigePoints, Is.EqualTo(2));
             Assert.That(state.lifetimeMoney, Is.EqualTo(4_000_000), "la richesse cumulée survit au reset");
             Assert.That(state.money, Is.EqualTo(0));
@@ -70,7 +73,7 @@ namespace Devside.FishingIdle.Core.Tests
             state.GetOrCreateProducer("fisher").count = 1;
 
             Simulation.Tick(config, state, 10);
-            double caught = Simulation.CastLine(config, state);
+            double caught = Simulation.CastLine(config, state, 0).amount;
 
             Assert.That(state.rawFish, Is.EqualTo(20 + caught).Within(1e-9));
             Assert.That(caught, Is.EqualTo(2).Within(1e-9));

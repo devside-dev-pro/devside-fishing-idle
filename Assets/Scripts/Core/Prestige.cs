@@ -34,6 +34,8 @@ namespace Devside.FishingIdle.Core
                 prestigePoints = state.prestigePoints + gained,
                 lifetimeMoney = state.lifetimeMoney,
                 lastSeenUnixSeconds = state.lastSeenUnixSeconds,
+                // Le Poissodex est permanent : les découvertes survivent au reset.
+                discoveredSpecies = state.discoveredSpecies,
             };
             state.CopyFrom(fresh);
             return gained;

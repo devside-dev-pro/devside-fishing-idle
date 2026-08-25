@@ -12,6 +12,7 @@ namespace Devside.FishingIdle.Game
     public class DevHud : MonoBehaviour
     {
         Vector2 _scroll;
+        CatchResult _lastCatch;
 
         void OnGUI()
         {
@@ -26,12 +27,15 @@ namespace Devside.FishingIdle.Game
             GUILayout.Label($"Argent : {Numbers.Format(state.money)}");
             GUILayout.Label($"Brut : {Numbers.Format(state.rawFish)}  |  Découpé : {Numbers.Format(state.cutFish)}  |  Filets : {Numbers.Format(state.fillet)}");
             GUILayout.Label($"Prestige : {state.prestigePoints} pts (en attente : {Prestige.PendingPoints(config, state)})");
+            GUILayout.Label($"Profondeur : {Catching.DepthLevel(config, state)}  |  Poissodex : {state.discoveredSpecies.Count}/{config.species.Count}");
+            if (_lastCatch != null && _lastCatch.speciesId != null)
+                GUILayout.Label($"Dernière prise : {_lastCatch.speciesId} (+{Numbers.Format(_lastCatch.amount)}){(_lastCatch.newDiscovery ? "  ★ DÉCOUVERTE !" : "")}");
             if (boot.LastOffline != null && boot.LastOffline.simulatedSeconds > 0)
                 GUILayout.Label($"Hors-ligne : +{Numbers.Format(boot.LastOffline.moneyGained)} en {(int)(boot.LastOffline.simulatedSeconds / 60)} min");
 
             GUILayout.Space(8);
             if (GUILayout.Button("Pêcher !", GUILayout.Height(48)))
-                Simulation.CastLine(config, state);
+                _lastCatch = Simulation.CastLine(config, state, Random.value);
             if (!state.autoSellUnlocked && GUILayout.Button("Tout vendre", GUILayout.Height(32)))
                 Economy.SellAll(config, state);
 

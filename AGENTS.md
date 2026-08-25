@@ -7,7 +7,8 @@ Le game design de référence est `docs/GAME-DESIGN.md` — le lire avant de tou
 
 - `Assets/Scripts/Core` est un **moteur pur** : l'asmdef a `noEngineReferences: true`,
   donc aucun `using UnityEngine`, aucun accès disque, aucun accès à l'horloge, aucun RNG
-  caché (le temps et les timestamps sont passés en paramètre par la couche hôte) et
+  caché (le temps, les timestamps et les tirages aléatoires — rolls — sont passés en
+  paramètre par la couche hôte) et
   **aucun texte affichable** (uniquement des ids stables type `fisherman_t1`).
 - Toute mécanique de jeu entre dans Core sous forme de **fonctions pures accompagnées de
   tests NUnit** dans `Assets/Tests/EditMode`. Pas de mécanique dans un MonoBehaviour.

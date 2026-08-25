@@ -51,7 +51,10 @@ superposant des systèmes qui se relancent l'un l'autre :
   (pêche, transformation, commerce) → chaque run se joue différemment.
 - **Collections (« Poissodex »)** : chaque espèce capturée se consigne ; les rares/légendaires
   donnent des bonus permanents. Levier de rétention le moins cher à produire : une espèce
-  = une ligne de données + un sprite.
+  = une ligne de données + un sprite. **Implémenté v1** (13 espèces sur 4 paliers de
+  profondeur, bonus permanents, survit au prestige). Décision de design : la découverte
+  d'espèces ne passe que par la pêche manuelle — le clic garde ainsi un rôle à vie, même
+  quand toute la production est automatisée.
 - **Zones/profondeurs** : débloquées par palier, chaque zone remélange espèces, prix et
   dangers. Même moteur, sensation de nouveauté.
 - **RNG à ratio variable** : poissons rares, coffres, quêtes d'un PNJ — la machine à sous
@@ -70,6 +73,10 @@ la 6–8ᵉ heure, et un joueur qui prestige 3 fois avant d'avoir tout vu.
   transformer doit toujours battre vendre brut, sans rendre le brut inutile).
 - Producteurs primaires (pêcheurs) et postes de transformation (mêmes maths, avec une
   ressource d'entrée) — voir `BalanceConfig.Default()` pour la table v1.
+- Espèces & profondeur : 13 espèces sur 4 paliers, réservées par l'amélioration `boat_hull`
+  (coût ×8 par palier → les espèces profondes sont mid/late game). Tirage pondéré
+  déterministe (le roll est injecté par l'hôte), valeur de la prise multipliée par
+  l'espèce, bonus permanent de production à chaque découverte.
 - Coûts : `coût(n) = base × croissance^n`, achats groupés par somme géométrique.
 - Hors-ligne : simulation par pas de 60 s, plafonnée (2 h de base, extensible par
   amélioration) — le plafond crée la raison de revenir.

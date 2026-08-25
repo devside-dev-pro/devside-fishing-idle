@@ -7,10 +7,12 @@ namespace Devside.FishingIdle.Core
     {
         public static double ManualCatch(BalanceConfig config, GameState state)
             => Prestige.ProductionMultiplier(config, state)
+               * Catching.CollectionBonus(config, state)
                * FromUpgrades(config, state, UpgradeEffect.ManualCatchMultiplier, null);
 
         public static double ProducerRate(BalanceConfig config, GameState state, string producerId)
             => Prestige.ProductionMultiplier(config, state)
+               * Catching.CollectionBonus(config, state)
                * FromUpgrades(config, state, UpgradeEffect.ProducerRateMultiplier, producerId);
 
         public static double SellPrice(BalanceConfig config, GameState state)

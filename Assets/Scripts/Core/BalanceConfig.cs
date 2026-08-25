@@ -37,6 +37,8 @@ namespace Devside.FishingIdle.Core
         OfflineCapMultiplier,
         /// <summary>Débloque la vente automatique (niveau max 1).</summary>
         UnlockAutoSell,
+        /// <summary>+1 palier de profondeur par niveau — donne accès aux espèces profondes.</summary>
+        DepthLevel,
     }
 
     public class UpgradeDef
@@ -74,6 +76,7 @@ namespace Devside.FishingIdle.Core
         public Dictionary<ResourceId, double> sellPrices = new Dictionary<ResourceId, double>();
         public List<ProducerDef> producers = new List<ProducerDef>();
         public List<UpgradeDef> upgrades = new List<UpgradeDef>();
+        public List<SpeciesDef> species = new List<SpeciesDef>();
 
         public ProducerDef Producer(string id)
         {
@@ -163,6 +166,28 @@ namespace Devside.FishingIdle.Core
                 multiplierPerLevel = 1.5, maxLevel = 8,
                 baseCost = 1_000, costGrowth = 5,
             });
+            config.upgrades.Add(new UpgradeDef
+            {
+                id = "boat_hull", effect = UpgradeEffect.DepthLevel,
+                maxLevel = 3, baseCost = 5_000, costGrowth = 8,
+            });
+
+            // Poissodex v1. Palier 0 accessible dès le départ, paliers 1-3 gated par boat_hull.
+            // Les poids définissent la rareté au sein d'un même palier ; valueMultiplier ce que
+            // vaut la prise ; discoveryBonus le bonus permanent de collection.
+            config.species.Add(new SpeciesDef { id = "sardine", minDepthLevel = 0, weight = 50, valueMultiplier = 1, discoveryBonus = 1.01 });
+            config.species.Add(new SpeciesDef { id = "mackerel", minDepthLevel = 0, weight = 30, valueMultiplier = 1.5, discoveryBonus = 1.01 });
+            config.species.Add(new SpeciesDef { id = "sea_bass", minDepthLevel = 0, weight = 15, valueMultiplier = 2.5, discoveryBonus = 1.02 });
+            config.species.Add(new SpeciesDef { id = "sunfish", minDepthLevel = 0, weight = 5, valueMultiplier = 6, discoveryBonus = 1.03 });
+            config.species.Add(new SpeciesDef { id = "tuna", minDepthLevel = 1, weight = 40, valueMultiplier = 8, discoveryBonus = 1.02 });
+            config.species.Add(new SpeciesDef { id = "swordfish", minDepthLevel = 1, weight = 25, valueMultiplier = 15, discoveryBonus = 1.03 });
+            config.species.Add(new SpeciesDef { id = "moonfish", minDepthLevel = 1, weight = 10, valueMultiplier = 30, discoveryBonus = 1.04 });
+            config.species.Add(new SpeciesDef { id = "ghost_eel", minDepthLevel = 1, weight = 3, valueMultiplier = 80, discoveryBonus = 1.05 });
+            config.species.Add(new SpeciesDef { id = "anglerfish", minDepthLevel = 2, weight = 30, valueMultiplier = 60, discoveryBonus = 1.03 });
+            config.species.Add(new SpeciesDef { id = "giant_squid", minDepthLevel = 2, weight = 12, valueMultiplier = 150, discoveryBonus = 1.05 });
+            config.species.Add(new SpeciesDef { id = "abyssal_shark", minDepthLevel = 2, weight = 4, valueMultiplier = 400, discoveryBonus = 1.06 });
+            config.species.Add(new SpeciesDef { id = "kraken_spawn", minDepthLevel = 3, weight = 6, valueMultiplier = 1_200, discoveryBonus = 1.08 });
+            config.species.Add(new SpeciesDef { id = "leviathan", minDepthLevel = 3, weight = 1, valueMultiplier = 5_000, discoveryBonus = 1.12 });
 
             return config;
         }

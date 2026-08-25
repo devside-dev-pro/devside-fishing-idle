@@ -80,7 +80,7 @@ namespace Devside.FishingIdle.Core.Tests
             var state = new GameState();
             state.GetOrCreateUpgrade("rod").level = 2; // ×2 par niveau → ×4
 
-            double caught = Simulation.CastLine(config, state);
+            double caught = Simulation.CastLine(config, state, 0).amount;
 
             Assert.That(caught, Is.EqualTo(4).Within(1e-9));
             Assert.That(state.rawFish, Is.EqualTo(4).Within(1e-9));

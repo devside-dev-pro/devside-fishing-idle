@@ -51,6 +51,9 @@ namespace Devside.FishingIdle.Core
         public List<ProducerState> producers = new List<ProducerState>();
         public List<UpgradeState> upgrades = new List<UpgradeState>();
 
+        /// <summary>Poissodex : ids des espèces découvertes. Permanent — survit au prestige.</summary>
+        public List<string> discoveredSpecies = new List<string>();
+
         /// <summary>Horodatage unix (secondes) fourni par la couche hôte à la sauvegarde.</summary>
         public long lastSeenUnixSeconds;
 
@@ -129,6 +132,7 @@ namespace Devside.FishingIdle.Core
             autoSellUnlocked = other.autoSellUnlocked;
             producers = other.producers;
             upgrades = other.upgrades;
+            discoveredSpecies = other.discoveredSpecies;
             lastSeenUnixSeconds = other.lastSeenUnixSeconds;
         }
     }

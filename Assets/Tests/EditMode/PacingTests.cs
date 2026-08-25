@@ -15,9 +15,10 @@ namespace Devside.FishingIdle.Core.Tests
         static GameState PlayFor(BalanceConfig config, int seconds)
         {
             var state = new GameState();
+            var rng = new System.Random(20260825); // graine fixe : le bot est rejouable
             for (int t = 0; t < seconds; t++)
             {
-                for (int c = 0; c < 3; c++) Simulation.CastLine(config, state);
+                for (int c = 0; c < 3; c++) Simulation.CastLine(config, state, rng.NextDouble());
                 Simulation.Tick(config, state, 1);
                 if (!state.autoSellUnlocked && t % 10 == 0) Economy.SellAll(config, state);
 

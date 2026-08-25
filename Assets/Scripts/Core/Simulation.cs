@@ -42,12 +42,26 @@ namespace Devside.FishingIdle.Core
             if (state.autoSellUnlocked) Economy.SellAll(config, state);
         }
 
-        /// <summary>Action manuelle : un lancer de ligne. Renvoie le nombre de poissons attrapés.</summary>
-        public static double CastLine(BalanceConfig config, GameState state)
+        /// <summary>
+        /// Action manuelle : un lancer de ligne. Le roll ∈ [0,1[ vient de la couche hôte
+        /// (UnityEngine.Random.value en jeu, valeur fixée en test) et détermine l'espèce.
+        /// La découverte d'espèces ne passe que par ici : le clic garde un rôle à vie.
+        /// </summary>
+        public static CatchResult CastLine(BalanceConfig config, GameState state, double roll)
         {
-            double caught = config.baseManualCatch * Multipliers.ManualCatch(config, state);
-            state.AddResource(ResourceId.RawFish, caught);
-            return caught;
+            var species = Catching.PickSpecies(config, state, roll);
+            double amount = config.baseManualCatch * Multipliers.ManualCatch(config, state);
+
+            var result = new CatchResult();
+            if (species != null)
+            {
+                amount *= species.valueMultiplier;
+                result.speciesId = species.id;
+                result.newDiscovery = Catching.RegisterCatch(state, species.id);
+            }
+            result.amount = amount;
+            state.AddResource(ResourceId.RawFish, amount);
+            return result;
         }
     }
 }
