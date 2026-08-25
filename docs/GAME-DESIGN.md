@@ -7,9 +7,25 @@
 
 Un idle/incrémental mobile à thème pêche, au ton léger/absurde (référence d'ambiance :
 How to Fish). On commence seul avec une canne pourrie ; on finit à la tête d'un empire de
-la pêche industrielle qu'on ne fait plus qu'optimiser. Références de mécanique :
-Cookie Clicker (courbes, prestige), Hooked Inc (thème, marché mobile validé),
-Melvor Idle (collections, profondeur long terme).
+la pêche industrielle qu'on ne fait plus qu'optimiser.
+
+## Inspirations assumées
+
+Principe : prendre ce qui a fait ses preuves dans les meilleurs du genre et le passer à
+notre sauce. Mapping de ce qu'on emprunte :
+
+| Source | Mécanique éprouvée | Chez nous |
+|---|---|---|
+| Cookie Clicker | Courbes de coût ×1.15, prestige, le clic qui devient marginal | Économie de base, prestige en √ |
+| Egg Inc | **Silos = plafond hors-ligne choisi par le joueur** | La **cale** (`cargo_hold`) |
+| Hooked Inc | Thème pêche mobile validé, équipage, bateau qui grossit | Pêcheurs, améliorations de bateau |
+| Melvor Idle / Pokémon | Collection d'espèces à bonus permanents | Le **Poissodex** |
+| Vampire Survivors | Runs courts à choix de reliques qui se combinent | Couche roguelike (phase 4/5) |
+| How to Fish | Ton absurde, pêche « physique », armes improbables | Direction d'ambiance (plus tard) |
+
+Backlog d'emprunts à évaluer plus tard (non implémentés) : missions/quêtes journalières
+(Egg Inc), boosts temporaires activables, événements datés, statistiques de fierté
+(« poissons pêchés au total »).
 
 ## Le principe directeur : le métier du joueur change
 
@@ -78,8 +94,14 @@ la 6–8ᵉ heure, et un joueur qui prestige 3 fois avant d'avoir tout vu.
   déterministe (le roll est injecté par l'hôte), valeur de la prise multipliée par
   l'espèce, bonus permanent de production à chaque découverte.
 - Coûts : `coût(n) = base × croissance^n`, achats groupés par somme géométrique.
-- Hors-ligne : simulation par pas de 60 s, plafonnée (2 h de base, extensible par
-  amélioration) — le plafond crée la raison de revenir.
+- Hors-ligne — **la cale** : pas de vente auto en mer, le poisson s'accumule dans la cale
+  et c'est sa capacité (`cargo_hold`, ×2 par niveau) qui plafonne le gain hors-ligne ;
+  cale pleine = production stoppée. Deux styles de jeu assumés : le joueur idle investit
+  dans la cale et revient la vider (future notification « votre cale est pleine ») ; le
+  joueur actif l'ignore, car en ligne la vente auto vide le stock au fil de l'eau et la
+  cale ne bride jamais le flux. Subtilité voulue : les ateliers compressent le stock
+  (2 découpés → 1 filet), donc transformer augmente la capacité hors-ligne effective.
+  `offlineCapSeconds` (72 h) n'est qu'un garde-fou de calcul, pas un levier de gameplay.
 - Prestige : `points = ⌊√(richesse cumulée / 1 M)⌋`, +2 % de production par point (v1).
 
 L'équilibrage se règle **uniquement** dans `BalanceConfig` et se vérifie avec le bot de
@@ -92,4 +114,6 @@ L'équilibrage se règle **uniquement** dans `BalanceConfig` et se vérifie avec
   validée.
 - Couche roguelike « sorties en mer » (runs courts à choix de leurres/reliques) — prévue
   comme système de phase 4/5, à prototyper une fois la base addictive.
+- Notifications locales mobiles (« votre cale est pleine ») — le champ `holdFull`
+  d'`OfflineResult` est prêt pour ça.
 - Localisation : le Core ne contient aucun texte, donc la question est purement UI.

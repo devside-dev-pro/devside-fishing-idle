@@ -28,10 +28,11 @@ namespace Devside.FishingIdle.Game
             GUILayout.Label($"Brut : {Numbers.Format(state.rawFish)}  |  Découpé : {Numbers.Format(state.cutFish)}  |  Filets : {Numbers.Format(state.fillet)}");
             GUILayout.Label($"Prestige : {state.prestigePoints} pts (en attente : {Prestige.PendingPoints(config, state)})");
             GUILayout.Label($"Profondeur : {Catching.DepthLevel(config, state)}  |  Poissodex : {state.discoveredSpecies.Count}/{config.species.Count}");
+            GUILayout.Label($"Cale : {Numbers.Format(state.TotalFishStock)} / {Numbers.Format(Multipliers.HoldCapacity(config, state))}");
             if (_lastCatch != null && _lastCatch.speciesId != null)
                 GUILayout.Label($"Dernière prise : {_lastCatch.speciesId} (+{Numbers.Format(_lastCatch.amount)}){(_lastCatch.newDiscovery ? "  ★ DÉCOUVERTE !" : "")}");
             if (boot.LastOffline != null && boot.LastOffline.simulatedSeconds > 0)
-                GUILayout.Label($"Hors-ligne : +{Numbers.Format(boot.LastOffline.moneyGained)} en {(int)(boot.LastOffline.simulatedSeconds / 60)} min");
+                GUILayout.Label($"Hors-ligne : +{Numbers.Format(boot.LastOffline.stockGained)} poissons en {(int)(boot.LastOffline.simulatedSeconds / 60)} min{(boot.LastOffline.holdFull ? " — CALE PLEINE !" : "")}");
 
             GUILayout.Space(8);
             if (GUILayout.Button("Pêcher !", GUILayout.Height(48)))

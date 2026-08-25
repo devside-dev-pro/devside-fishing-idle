@@ -13,6 +13,8 @@ namespace Devside.FishingIdle.Core.Tests
         public static BalanceConfig Simple()
         {
             var config = new BalanceConfig();
+            // Cale quasi illimitée : les tests qui exercent la cale construisent leur propre config.
+            config.baseHoldCapacity = 1e12;
             config.sellPrices[ResourceId.RawFish] = 1;
             config.sellPrices[ResourceId.CutFish] = 5;
             config.sellPrices[ResourceId.Fillet] = 20;

@@ -33,8 +33,8 @@ namespace Devside.FishingIdle.Core
         ProducerRateMultiplier,
         /// <summary>Multiplie tous les prix de vente.</summary>
         SellPriceMultiplier,
-        /// <summary>Multiplie le plafond de gains hors-ligne.</summary>
-        OfflineCapMultiplier,
+        /// <summary>Multiplie la capacité de la cale (plafond de stock, donc de gains hors-ligne).</summary>
+        HoldCapacityMultiplier,
         /// <summary>Débloque la vente automatique (niveau max 1).</summary>
         UnlockAutoSell,
         /// <summary>+1 palier de profondeur par niveau — donne accès aux espèces profondes.</summary>
@@ -64,8 +64,17 @@ namespace Devside.FishingIdle.Core
         /// <summary>Poissons attrapés par lancer manuel, avant multiplicateurs.</summary>
         public double baseManualCatch = 1;
 
-        /// <summary>Plafond de simulation hors-ligne, en secondes (avant multiplicateurs).</summary>
-        public double offlineCapSeconds = 2 * 3600;
+        /// <summary>
+        /// Capacité de base de la cale, en unités de poisson (avant multiplicateurs).
+        /// C'est elle qui plafonne l'accumulation hors-ligne : cale pleine = production stoppée.
+        /// </summary>
+        public double baseHoldCapacity = 200;
+
+        /// <summary>
+        /// Garde-fou de calcul pour la simulation hors-ligne, en secondes. La vraie limite
+        /// de gameplay est la cale ; ce plafond évite seulement de simuler des semaines.
+        /// </summary>
+        public double offlineCapSeconds = 72 * 3600;
 
         /// <summary>Richesse cumulée donnant droit au premier point de prestige.</summary>
         public double prestigeBase = 1_000_000;
@@ -162,9 +171,9 @@ namespace Devside.FishingIdle.Core
             });
             config.upgrades.Add(new UpgradeDef
             {
-                id = "offline_logbook", effect = UpgradeEffect.OfflineCapMultiplier,
-                multiplierPerLevel = 1.5, maxLevel = 8,
-                baseCost = 1_000, costGrowth = 5,
+                id = "cargo_hold", effect = UpgradeEffect.HoldCapacityMultiplier,
+                multiplierPerLevel = 2, maxLevel = 30,
+                baseCost = 100, costGrowth = 2.5,
             });
             config.upgrades.Add(new UpgradeDef
             {

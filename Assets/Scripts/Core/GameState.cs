@@ -54,6 +54,9 @@ namespace Devside.FishingIdle.Core
         /// <summary>Poissodex : ids des espèces découvertes. Permanent — survit au prestige.</summary>
         public List<string> discoveredSpecies = new List<string>();
 
+        /// <summary>Stock total de poisson à bord — ce que la cale doit contenir.</summary>
+        public double TotalFishStock => rawFish + cutFish + fillet;
+
         /// <summary>Horodatage unix (secondes) fourni par la couche hôte à la sauvegarde.</summary>
         public long lastSeenUnixSeconds;
 

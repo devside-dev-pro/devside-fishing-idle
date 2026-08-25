@@ -20,25 +20,41 @@ namespace Devside.FishingIdle.Core.Tests
         }
 
         [Test]
-        public void Apply_MatchesOnlineSimulationStepByStep()
+        public void Apply_MatchesChunkedSimulationStepByStep()
         {
             var config = TestConfigs.Simple();
 
-            var offline = new GameState { autoSellUnlocked = true };
+            var offline = new GameState();
             offline.GetOrCreateProducer("fisher").count = 2;
             offline.GetOrCreateProducer("cutter").count = 1;
 
-            var online = new GameState { autoSellUnlocked = true };
-            online.GetOrCreateProducer("fisher").count = 2;
-            online.GetOrCreateProducer("cutter").count = 1;
+            var chunked = new GameState();
+            chunked.GetOrCreateProducer("fisher").count = 2;
+            chunked.GetOrCreateProducer("cutter").count = 1;
 
             OfflineProgress.Apply(config, offline, 600);
             for (int i = 0; i < 600 / (int)OfflineProgress.StepSeconds; i++)
-                Simulation.Tick(config, online, OfflineProgress.StepSeconds);
+                Simulation.Tick(config, chunked, OfflineProgress.StepSeconds, allowAutoSell: false);
 
-            Assert.That(offline.money, Is.EqualTo(online.money).Within(1e-6));
-            Assert.That(offline.rawFish, Is.EqualTo(online.rawFish).Within(1e-6));
-            Assert.That(offline.cutFish, Is.EqualTo(online.cutFish).Within(1e-6));
+            Assert.That(offline.rawFish, Is.EqualTo(chunked.rawFish).Within(1e-6));
+            Assert.That(offline.cutFish, Is.EqualTo(chunked.cutFish).Within(1e-6));
+        }
+
+        [Test]
+        public void Apply_DoesNotAutoSellAtSea()
+        {
+            // Même avec la vente auto débloquée, hors-ligne le poisson s'accumule dans la
+            // cale au lieu d'être vendu : c'est elle qui plafonne le gain hors-ligne.
+            var config = TestConfigs.Simple();
+            config.baseHoldCapacity = 100;
+            var state = new GameState { autoSellUnlocked = true };
+            state.GetOrCreateProducer("fisher").count = 1;
+
+            var result = OfflineProgress.Apply(config, state, 3600);
+
+            Assert.That(result.moneyGained, Is.EqualTo(0).Within(1e-9), "pas de comptoir en mer");
+            Assert.That(state.rawFish, Is.EqualTo(100).Within(1e-6), "production stoppée cale pleine");
+            Assert.That(result.holdFull, Is.True);
         }
 
         [Test]
@@ -55,16 +71,16 @@ namespace Devside.FishingIdle.Core.Tests
         }
 
         [Test]
-        public void Apply_ReportsGains()
+        public void Apply_ReportsStockGains()
         {
             var config = TestConfigs.Simple();
-            var state = new GameState { autoSellUnlocked = true };
+            var state = new GameState();
             state.GetOrCreateProducer("fisher").count = 1;
 
             var result = OfflineProgress.Apply(config, state, 120);
 
-            Assert.That(result.moneyGained, Is.EqualTo(120).Within(1e-6));
-            Assert.That(state.money, Is.EqualTo(120).Within(1e-6));
+            Assert.That(result.stockGained, Is.EqualTo(120).Within(1e-6));
+            Assert.That(result.holdFull, Is.False, "cale quasi illimitée dans la config de test");
         }
     }
 }

@@ -18,9 +18,9 @@ namespace Devside.FishingIdle.Core
         public static double SellPrice(BalanceConfig config, GameState state)
             => FromUpgrades(config, state, UpgradeEffect.SellPriceMultiplier, null);
 
-        public static double OfflineCapSeconds(BalanceConfig config, GameState state)
-            => config.offlineCapSeconds
-               * FromUpgrades(config, state, UpgradeEffect.OfflineCapMultiplier, null);
+        public static double HoldCapacity(BalanceConfig config, GameState state)
+            => config.baseHoldCapacity
+               * FromUpgrades(config, state, UpgradeEffect.HoldCapacityMultiplier, null);
 
         /// <summary>
         /// Produit des multiplicateurs de toutes les améliorations possédées ayant cet effet.

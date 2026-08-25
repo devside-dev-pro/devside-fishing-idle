@@ -8,6 +8,9 @@ namespace Devside.FishingIdle.Core
         public double simulatedSeconds;
         public double moneyGained;
         public double stockGained;
+
+        /// <summary>La cale a saturé pendant l'absence — base de la future notification « cale pleine ».</summary>
+        public bool holdFull;
     }
 
     public static class OfflineProgress
@@ -19,21 +22,22 @@ namespace Devside.FishingIdle.Core
         public const double StepSeconds = 60;
 
         /// <summary>
-        /// Applique la progression hors-ligne, plafonnée par la config, et renvoie un résumé.
+        /// Applique la progression hors-ligne et renvoie un résumé. La vente auto ne tourne
+        /// pas en mer : le poisson s'accumule dans la cale et c'est sa capacité qui plafonne
+        /// réellement le gain (offlineCapSeconds n'est qu'un garde-fou de calcul).
         /// </summary>
         public static OfflineResult Apply(BalanceConfig config, GameState state, double elapsedSeconds)
         {
-            double cap = Multipliers.OfflineCapSeconds(config, state);
-            double simulated = Math.Max(0, Math.Min(elapsedSeconds, cap));
+            double simulated = Math.Max(0, Math.Min(elapsedSeconds, config.offlineCapSeconds));
 
             double moneyBefore = state.money;
-            double stockBefore = state.rawFish + state.cutFish + state.fillet;
+            double stockBefore = state.TotalFishStock;
 
             double remaining = simulated;
             while (remaining > 0)
             {
                 double dt = Math.Min(StepSeconds, remaining);
-                Simulation.Tick(config, state, dt);
+                Simulation.Tick(config, state, dt, allowAutoSell: false);
                 remaining -= dt;
             }
 
@@ -41,7 +45,8 @@ namespace Devside.FishingIdle.Core
             {
                 simulatedSeconds = simulated,
                 moneyGained = state.money - moneyBefore,
-                stockGained = state.rawFish + state.cutFish + state.fillet - stockBefore,
+                stockGained = state.TotalFishStock - stockBefore,
+                holdFull = state.TotalFishStock + 1e-6 >= Multipliers.HoldCapacity(config, state),
             };
         }
     }
