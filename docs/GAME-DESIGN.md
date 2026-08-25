@@ -22,6 +22,7 @@ notre sauce. Mapping de ce qu'on emprunte :
 | Melvor Idle / Pokémon | Collection d'espèces à bonus permanents | Le **Poissodex** |
 | Vampire Survivors | Runs courts à choix de reliques qui se combinent | Couche roguelike (phase 4/5) |
 | How to Fish | Ton absurde, pêche « physique », armes improbables | Direction d'ambiance (plus tard) |
+| Fishing Frenzy: Idle Hooked Inc | **Caméra quasi top-down portrait**, lignes à l'eau, tapis de transformation sur le pont, bassins, équipement d'équipage, cartes de collection | Cadrage caméra, chaîne visible sur le pont, futur système d'équipement |
 
 Backlog d'emprunts à évaluer plus tard (non implémentés) : missions/quêtes journalières
 (Egg Inc), boosts temporaires activables, événements datés, statistiques de fierté
