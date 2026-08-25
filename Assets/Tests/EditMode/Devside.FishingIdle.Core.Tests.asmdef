@@ -3,6 +3,7 @@
     "rootNamespace": "Devside.FishingIdle.Core.Tests",
     "references": [
         "Devside.FishingIdle.Core",
+        "Devside.FishingIdle.Game",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

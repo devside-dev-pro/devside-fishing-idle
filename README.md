@@ -23,7 +23,10 @@ qu'on ne fait plus qu'optimiser. Le design complet est dans
    **Force Text** (c'est le défaut).
 5. Créer la scène de jeu : File → New Scene, l'enregistrer dans `Assets/Scenes/Main.unity`,
    créer un GameObject vide nommé `Game`, lui ajouter les composants **GameBootstrap** et
-   **DevHud**, puis appuyer sur Play. Le jeu est jouable immédiatement via le HUD de dev.
+   **GameUi**, puis appuyer sur Play. L'UI mobile se construit toute seule au démarrage
+   (aucun câblage de scène). Pour le bon rendu, mettre la vue Game en portrait : menu
+   déroulant d'aspect en haut de la vue Game → **+** → 1080×1920.
+   (`DevHud` reste disponible comme HUD de secours ; `GameUi` le désactive s'il est présent.)
 
 ## Tests
 
