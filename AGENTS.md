@@ -14,8 +14,10 @@ Le game design de référence est `docs/GAME-DESIGN.md` — le lire avant de tou
   tests NUnit** dans `Assets/Tests/EditMode`. Pas de mécanique dans un MonoBehaviour.
 - Tout l'équilibrage (coûts, taux, courbes) vit dans `BalanceConfig` et nulle part ailleurs.
 - `Assets/Scripts/Game` est la couche Unity : MonoBehaviours fins qui branchent Core sur la
-  scène, sauvegarde, UI. Exception assumée : `DevHud` est un outil de dev jetable, ses
-  libellés en dur sont tolérés ; la vraie UI passera par une couche thème dédiée.
+  scène, sauvegarde, UI. La vraie UI (`GameUi`, bâtie par code via `UiKit`) ne contient
+  **aucun libellé en dur** : tout texte affichable vient de `GameTheme` (couche thème), et
+  `ThemeTests` vérifie que chaque id de `BalanceConfig.Default()` y a son libellé.
+  Exception assumée : `DevHud` est un outil de dev jetable, ses libellés en dur sont tolérés.
 - `PacingTests` est le harnais d'équilibrage : un bot joue la première heure en accéléré.
   Après tout changement de `BalanceConfig`, vérifier que ses assertions tiennent toujours.
 
