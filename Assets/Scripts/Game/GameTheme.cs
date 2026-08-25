@@ -51,6 +51,8 @@ namespace Devside.FishingIdle.Game
         public const string PrestigeAction = "PRESTIGE";
         public const string ProducersSection = "— Producteurs —";
         public const string UpgradesSection = "— Améliorations —";
+        public const string CrewTab = "Équipage";
+        public const string UpgradesTab = "Améliorer";
         public const string MoneySuffix = "pièces";
         public const string RawLabel = "Brut";
         public const string CutLabel = "Découpé";

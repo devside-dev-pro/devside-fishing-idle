@@ -23,9 +23,11 @@ qu'on ne fait plus qu'optimiser. Le design complet est dans
    **Force Text** (c'est le défaut).
 5. Créer la scène de jeu : File → New Scene, l'enregistrer dans `Assets/Scenes/Main.unity`,
    créer un GameObject vide nommé `Game`, lui ajouter les composants **GameBootstrap** et
-   **GameUi**, puis appuyer sur Play. L'UI mobile se construit toute seule au démarrage
-   (aucun câblage de scène). Pour le bon rendu, mettre la vue Game en portrait : menu
-   déroulant d'aspect en haut de la vue Game → **+** → 1080×1920.
+   **GameUi**, puis appuyer sur Play. Tout se construit tout seul au démarrage : le
+   diorama 3D du bateau (`BoatView`, ajouté automatiquement) et l'UI mobile par-dessus —
+   aucun câblage de scène. On pêche en tapant sur l'eau ou via le bouton central.
+   Pour le bon rendu, mettre la vue Game en portrait : menu déroulant d'aspect en haut de
+   la vue Game → **+** → 1080×1920.
    (`DevHud` reste disponible comme HUD de secours ; `GameUi` le désactive s'il est présent.)
 
 ## Tests

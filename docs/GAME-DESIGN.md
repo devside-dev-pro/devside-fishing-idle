@@ -22,10 +22,33 @@ notre sauce. Mapping de ce qu'on emprunte :
 | Melvor Idle / Pokémon | Collection d'espèces à bonus permanents | Le **Poissodex** |
 | Vampire Survivors | Runs courts à choix de reliques qui se combinent | Couche roguelike (phase 4/5) |
 | How to Fish | Ton absurde, pêche « physique », armes improbables | Direction d'ambiance (plus tard) |
+| Fishing Frenzy: Idle Hooked Inc | **Caméra quasi top-down portrait**, lignes à l'eau, tapis de transformation sur le pont, bassins, équipement d'équipage, cartes de collection | Cadrage caméra, chaîne visible sur le pont, futur système d'équipement |
 
 Backlog d'emprunts à évaluer plus tard (non implémentés) : missions/quêtes journalières
 (Egg Inc), boosts temporaires activables, événements datés, statistiques de fierté
 (« poissons pêchés au total »).
+
+## Direction visuelle : le diorama isométrique
+
+Référence validée (type *Idle Business Empire Tycoon*) : **la scène 3D est l'écran
+principal et matérialise la progression** — pas un jeu de menus. Chez nous : le bateau vu
+en 3/4 isométrique sur l'eau, et l'état du jeu incarné physiquement :
+
+| État de la simulation | Dans le diorama |
+|---|---|
+| Pêcheurs achetés (par tier) | Personnages qui pêchent sur le pont (plafond visuel par tier) |
+| Ateliers de découpe/filetage | Postes physiques animés sur le pont |
+| Remplissage de la cale | Caisses qui s'empilent à l'arrière |
+| Extensions de cale | Le bateau grossit |
+| Paliers de profondeur | L'eau fonce |
+| Pêche manuelle | Tap sur l'eau → poisson qui jaillit + chiffre qui vole |
+
+L'UI devient une surcouche : bandeau de stats en haut, barre d'onglets en bas
+(Équipage / Pêcher / Améliorer) ouvrant des panneaux, bandeau PRESTIGE quand disponible.
+
+Art v1 : primitives colorées flat générées par code (`BoatView`) — placeholder assumé.
+Le passage à de vrais assets (pack low-poly Asset Store type Synty, ou modélisation)
+remplacera la construction des blocs sans toucher ni à la logique ni au mapping ci-dessus.
 
 ## Le principe directeur : le métier du joueur change
 
