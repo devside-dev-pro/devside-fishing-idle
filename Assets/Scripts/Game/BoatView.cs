@@ -18,11 +18,12 @@ namespace Devside.FishingIdle.Game
         public static BoatView Instance { get; private set; }
 
         static readonly Color SkyColor = new Color(0.53f, 0.78f, 0.92f);
-        static readonly Color WaterShallow = new Color(0.22f, 0.6f, 0.65f);
+        static readonly Color WaterShallow = new Color(0.16f, 0.55f, 0.62f);
         static readonly Color WaterDeep = new Color(0.05f, 0.15f, 0.35f);
-        static readonly Color HullColor = new Color(0.45f, 0.29f, 0.18f);
-        static readonly Color DeckColor = new Color(0.66f, 0.47f, 0.3f);
-        static readonly Color CabinColor = new Color(0.85f, 0.83f, 0.76f);
+        static readonly Color HullColor = new Color(0.4f, 0.25f, 0.15f);
+        static readonly Color WaterlineColor = new Color(0.2f, 0.12f, 0.08f);
+        static readonly Color DeckColor = new Color(0.72f, 0.5f, 0.3f);
+        static readonly Color CabinColor = new Color(0.9f, 0.87f, 0.78f);
         static readonly Color CrateColor = new Color(0.72f, 0.55f, 0.28f);
         static readonly Color RodColor = new Color(0.25f, 0.18f, 0.12f);
         static readonly Color LineColor = new Color(0.9f, 0.95f, 1f);
@@ -181,13 +182,22 @@ namespace Devside.FishingIdle.Game
             _camera.clearFlags = CameraClearFlags.SolidColor;
             _camera.backgroundColor = SkyColor;
 
-            var lightGo = new GameObject("Sun", typeof(Light));
-            var sun = lightGo.GetComponent<Light>();
+            // Réutilise la Directional Light déjà présente dans la scène (celle du template
+            // par défaut) : en ajouter une deuxième surexpose tout le rendu.
+            Light sun = null;
+            foreach (var light in FindObjectsByType<Light>(FindObjectsSortMode.None))
+            {
+                if (light.type != LightType.Directional) continue;
+                if (sun == null) sun = light;
+                else light.gameObject.SetActive(false);
+            }
+            if (sun == null) sun = new GameObject("Sun", typeof(Light)).GetComponent<Light>();
             sun.type = LightType.Directional;
-            sun.intensity = 1.15f;
+            sun.intensity = 1.0f;
             sun.color = new Color(1f, 0.96f, 0.88f);
-            lightGo.transform.rotation = Quaternion.Euler(55f, -35f, 0f);
-            RenderSettings.ambientLight = new Color(0.55f, 0.6f, 0.66f);
+            sun.transform.rotation = Quaternion.Euler(55f, -35f, 0f);
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.42f, 0.47f, 0.54f);
         }
 
         void BuildSea()
@@ -203,11 +213,17 @@ namespace Devside.FishingIdle.Game
         {
             _boat = new GameObject("Boat").transform;
 
-            Block("Hull", _boat, new Vector3(0f, 0.35f, 0f), new Vector3(4.4f, 0.7f, 2.1f), HullColor);
-            Block("Bow", _boat, new Vector3(2.5f, 0.35f, 0f), new Vector3(0.8f, 0.7f, 1.4f), HullColor);
-            Block("Deck", _boat, new Vector3(0f, 0.73f, 0f), new Vector3(4.4f, 0.08f, 2.1f), DeckColor);
-            Block("Cabin", _boat, new Vector3(-1.5f, 1.15f, 0f), new Vector3(1.1f, 0.8f, 1.2f), CabinColor);
-            Block("Roof", _boat, new Vector3(-1.5f, 1.6f, 0f), new Vector3(1.3f, 0.1f, 1.4f), HullColor);
+            // Silhouette lisible du dessus : liseré sombre à la flottaison, coque qui
+            // déborde du pont (cadre foncé tout autour), proue en pointe.
+            Block("Waterline", _boat, new Vector3(0f, 0.12f, 0f), new Vector3(4.7f, 0.24f, 2.4f), WaterlineColor);
+            Block("Hull", _boat, new Vector3(0f, 0.4f, 0f), new Vector3(4.5f, 0.56f, 2.2f), HullColor);
+            Block("Deck", _boat, new Vector3(-0.1f, 0.72f, 0f), new Vector3(4.1f, 0.08f, 1.8f), DeckColor);
+            var bowHull = Block("Bow", _boat, new Vector3(2.25f, 0.4f, 0f), new Vector3(1.56f, 0.56f, 1.56f), HullColor);
+            bowHull.localRotation = Quaternion.Euler(0f, 45f, 0f);
+            var bowDeck = Block("BowDeck", _boat, new Vector3(2.2f, 0.72f, 0f), new Vector3(1.3f, 0.08f, 1.3f), DeckColor);
+            bowDeck.localRotation = Quaternion.Euler(0f, 45f, 0f);
+            Block("Cabin", _boat, new Vector3(-1.6f, 1.12f, 0f), new Vector3(1.1f, 0.8f, 1.2f), CabinColor);
+            Block("Roof", _boat, new Vector3(-1.6f, 1.57f, 0f), new Vector3(1.3f, 0.1f, 1.4f), HullColor);
 
             // Zone des caisses (arrière) : matérialise le remplissage de la cale.
             var crateStack = new GameObject("Crates").transform;
