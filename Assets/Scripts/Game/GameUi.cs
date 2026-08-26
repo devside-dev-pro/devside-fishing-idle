@@ -54,6 +54,7 @@ namespace Devside.FishingIdle.Game
         Text _offlineText;
         RectTransform _holdFill;
         Button _sellButton;
+        Text _sellLabel;
 
         /// <summary>Île marchande où le bateau est à quai (null en mer) — bonus au comptoir.</summary>
         WorldMap.Island _merchantHere;
@@ -133,7 +134,7 @@ namespace Devside.FishingIdle.Game
 
             RefreshHeader(config, state);
             RefreshRows(config, state);
-            RefreshMerchant(config);
+            RefreshMerchant();
 
             // La vente manuelle N'EXISTE qu'au comptoir du marchand (retour playtest :
             // vendre depuis la mer enlevait tout l'intérêt de l'île). En mer, la cale
@@ -178,7 +179,7 @@ namespace Devside.FishingIdle.Game
         /// À quai chez le marchand, la vente paie mieux : bannière d'accueil à
         /// l'arrivée et bouton « Tout vendre » qui devient le comptoir bonifié.
         /// </summary>
-        void RefreshMerchant(BalanceConfig config)
+        void RefreshMerchant()
         {
             var merchant = BoatController.Instance != null
                 ? WorldMap.MerchantAt(BoatController.Instance.Root.position)
@@ -186,12 +187,21 @@ namespace Devside.FishingIdle.Game
             if (merchant == _merchantHere) return;
 
             _merchantHere = merchant;
-            if (merchant != null)
-                ShowBanner(string.Format(GameTheme.MerchantWelcomeFormat, GameTheme.Island(merchant.id)));
+            if (merchant == null) return;
+
+            // Les comptoirs lointains paient mieux : l'annoncer à l'accostage, c'est
+            // ce qui donne envie de pousser plus loin.
+            int bonus = Mathf.RoundToInt((float)(merchant.sellBonus - 1) * 100f);
+            ShowBanner(bonus > 0
+                ? string.Format(GameTheme.MerchantBonusWelcomeFormat, GameTheme.Island(merchant.id), bonus)
+                : string.Format(GameTheme.MerchantWelcomeFormat, GameTheme.Island(merchant.id)));
+            if (_sellLabel != null) _sellLabel.text = bonus > 0
+                ? string.Format(GameTheme.SellAllBonusFormat, bonus)
+                : GameTheme.SellAllAction;
         }
 
-        double CurrentSellMultiplier(BalanceConfig config)
-            => _merchantHere != null ? config.merchantSellBonus : 1;
+        /// <summary>Le prix payé par le comptoir où l'on est accosté (1 en mer).</summary>
+        double CurrentSellMultiplier() => _merchantHere != null ? _merchantHere.sellBonus : 1;
 
         /// <summary>Bandeau d'information sous le header (captures, zone atteinte, blocages).</summary>
         public void ShowBanner(string text)
@@ -449,9 +459,10 @@ namespace Devside.FishingIdle.Game
             sellButton.onClick.AddListener(() =>
             {
                 var boot = GameBootstrap.Instance;
-                Economy.SellAll(boot.Config, boot.State, CurrentSellMultiplier(boot.Config));
+                Economy.SellAll(boot.Config, boot.State, CurrentSellMultiplier());
             });
             _sellButton = sellButton;
+            _sellLabel = sellLabel;
 
             _offlineText = UiKit.CreateText("Offline", canvas, 30, new Color(1f, 0.85f, 0.4f), TextAnchor.MiddleCenter);
             UiKit.AddOutline(_offlineText, 1.2f);
@@ -619,8 +630,11 @@ namespace Devside.FishingIdle.Game
             {
                 bool reachable = marker.island.zone <= maxZone;
                 string name = GameTheme.Island(marker.island.id);
+                // Chaque île a son comptoir, et les lointains paient mieux : la carte
+                // annonce le prix, c'est elle qui donne envie de lever l'ancre.
+                int bonus = Mathf.RoundToInt((float)(marker.island.sellBonus - 1) * 100f);
                 marker.label.text = reachable
-                    ? name
+                    ? (bonus > 0 ? $"{name}\n{string.Format(GameTheme.MapPayFormat, bonus)}" : name)
                     : $"{name}\n{string.Format(GameTheme.ZoneLockedFormat, marker.island.zone)}";
                 marker.label.color = reachable ? Color.white : new Color(1f, 1f, 1f, 0.55f);
             }

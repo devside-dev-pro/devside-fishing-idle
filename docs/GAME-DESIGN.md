@@ -86,14 +86,17 @@ liberté vient du déplacement, pas de la taille du monde.
   (10) et les Abysses (13) sont de vrais villages, de plus en plus grands et peuplés —
   aller loin doit se voir. Le bateau est repoussé un peu au-delà du haut-fond
   (`Island.BlockRadius`) pour ne jamais chevaucher le sable.
-- **Le comptoir du marchand** (v0.4, durci au playtest) : la vente N'EXISTE qu'à quai
-  chez le marchand — vendre depuis la mer enlevait tout l'intérêt de l'île. En mer, la
-  cale se remplit ; il faut rentrer encaisser (bonus `merchantSellBonus`, neutre en v1,
-  injecté par la couche hôte dans `Economy.Sell` — le Core ne sait pas où est le
-  bateau). **La vente automatique obéit à la même règle** : `Simulation.Tick` ne vend
-  que si l'hôte l'autorise (`GameBootstrap.AtMerchant`), sinon l'amélioration
-  écoulerait la pêche en pleine mer. Elle devient donc « je pose mon bateau au port et
-  ça se vend tout seul » — une décision, pas un contournement de la boucle.
+- **Chaque île a son comptoir, et les lointains paient mieux** : la vente N'EXISTE
+  qu'à quai — vendre depuis la mer enlevait tout l'intérêt des îles. En mer, la cale se
+  remplit ; il faut rentrer encaisser. Le prix appartient à l'île (`Island.sellBonus` :
+  +0 % au Vieux Ponton, +15 % au Lagon, +30 % aux Brumes, +50 % aux Abysses) et la
+  couche hôte l'injecte dans `Economy.Sell` / `Simulation.Tick` — le Core ne sait pas
+  où est le bateau. C'est ce qui rend l'exploration **rentable** et pas seulement
+  jolie : plus loin = plus de risque de trajet, meilleur prix.
+- **La vente automatique obéit à la même règle** : `Simulation.Tick` ne vend que si
+  l'hôte l'autorise (`GameBootstrap.CurrentMerchant`), au prix de l'île où l'on est.
+  Elle devient « je pose mon bateau à un comptoir et ça se vend tout seul » — une
+  décision (lequel ?), pas un contournement de la boucle.
 - **Pilotage posé-glissé** (retour playtest) : plus de joystick visible — un doigt
   posé sur la scène et glissé dans n'importe quelle direction pilote le bateau
   (zone morte 40 px, pleine vitesse à ~190 px) ; un tap bref reste un lancer de
