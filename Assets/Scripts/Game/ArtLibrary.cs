@@ -21,8 +21,32 @@ namespace Devside.FishingIdle.Game
         public const string Barrel = "Art/PirateQuaternius/Prop_Barrel";
         public const string CuttingStation = "Art/PirateQuaternius/Environment_Sawmill";
         public const string FilletStation = "Art/PirateQuaternius/Prop_Bucket_Fishes";
-        public const string Cliff = "Art/PirateQuaternius/Environment_Cliff1";
-        public const string Palm = "Art/PirateQuaternius/Environment_PalmTree_1";
+        public const string Dock = "Art/PirateQuaternius/Environment_Dock";
+        public const string House = "Art/PirateQuaternius/Environment_House1";
+        public const string Merchant = "Art/PirateQuaternius/Characters_Sharky";
+
+        // Décor d'îles : plusieurs variantes pour que chaque île ait sa silhouette.
+        public static readonly string[] Cliffs =
+        {
+            "Art/PirateQuaternius/Environment_Cliff1",
+            "Art/PirateQuaternius/Environment_Cliff2",
+            "Art/PirateQuaternius/Environment_Cliff3",
+            "Art/PirateQuaternius/Environment_Cliff4",
+        };
+        public static readonly string[] Palms =
+        {
+            "Art/PirateQuaternius/Environment_PalmTree_1",
+            "Art/PirateQuaternius/Environment_PalmTree_2",
+            "Art/PirateQuaternius/Environment_PalmTree_3",
+        };
+        public static readonly string[] Rocks =
+        {
+            "Art/PirateQuaternius/Environment_Rock_1",
+            "Art/PirateQuaternius/Environment_Rock_2",
+            "Art/PirateQuaternius/Environment_Rock_3",
+            "Art/PirateQuaternius/Environment_Rock_4",
+            "Art/PirateQuaternius/Environment_Rock_5",
+        };
 
         // Pack poissons Quaternius.
         public static readonly string[] SmallFish =

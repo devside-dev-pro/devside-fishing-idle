@@ -63,6 +63,8 @@ namespace Devside.FishingIdle.Game
         public const string LevelAbbrev = "niv.";
         public const string NewDiscovery = "★ Découverte !";
         public const string HoldFullMessage = "Cale pleine — vendez votre stock !";
+        public const string HullTooWeak = "Ta coque ne supporte pas ces eaux — renforce-la !";
+        public const string ZoneReachedPrefix = "Nouvelles eaux";
         public const string OfflinePrefix = "Pendant votre absence";
         public const string OfflineHoldFull = "cale pleine !";
         public const string FishUnit = "poissons";

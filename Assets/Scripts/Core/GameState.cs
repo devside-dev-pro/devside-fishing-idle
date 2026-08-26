@@ -60,6 +60,13 @@ namespace Devside.FishingIdle.Core
         /// <summary>Horodatage unix (secondes) fourni par la couche hôte à la sauvegarde.</summary>
         public long lastSeenUnixSeconds;
 
+        /// <summary>
+        /// Zone de profondeur où se trouve le bateau (0 = eaux de départ). Fixée par la
+        /// couche hôte d'après la position dans le monde — la navigation y est verrouillée
+        /// par l'amélioration de coque, le Core ne fait que lire la zone courante.
+        /// </summary>
+        public int currentZone;
+
         public double GetResource(ResourceId id)
         {
             switch (id)
@@ -137,6 +144,7 @@ namespace Devside.FishingIdle.Core
             upgrades = other.upgrades;
             discoveredSpecies = other.discoveredSpecies;
             lastSeenUnixSeconds = other.lastSeenUnixSeconds;
+            currentZone = other.currentZone;
         }
     }
 }

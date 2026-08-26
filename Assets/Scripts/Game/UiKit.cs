@@ -60,6 +60,33 @@ namespace Devside.FishingIdle.Game
             return sprite;
         }
 
+        static Sprite _circle;
+
+        /// <summary>Sprite disque blanc antialiasé, généré par code (joystick, pastilles).</summary>
+        public static Sprite Circle
+        {
+            get
+            {
+                if (_circle != null) return _circle;
+                const int size = 64;
+                const float radius = size / 2f - 1.5f;
+                var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { name = "Circle" };
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        float dx = x - size / 2f + 0.5f;
+                        float dy = y - size / 2f + 0.5f;
+                        float alpha = Mathf.Clamp01(radius - Mathf.Sqrt(dx * dx + dy * dy) + 0.5f);
+                        tex.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
+                    }
+                }
+                tex.Apply();
+                _circle = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+                return _circle;
+            }
+        }
+
         /// <summary>Carte à coins arrondis avec ombre portée optionnelle.</summary>
         public static Image CreateCard(string name, Transform parent, Color fill, bool shadow = true)
         {

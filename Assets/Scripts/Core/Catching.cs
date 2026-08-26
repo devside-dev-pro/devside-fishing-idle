@@ -38,8 +38,19 @@ namespace Devside.FishingIdle.Core
     /// </summary>
     public static class Catching
     {
-        /// <summary>Palier de profondeur courant : somme des niveaux des améliorations DepthLevel.</summary>
+        /// <summary>
+        /// Palier de profondeur courant = la zone où se trouve le bateau (fixée par la
+        /// couche hôte d'après la position dans le monde). Les améliorations DepthLevel
+        /// (coque) ne donnent plus les espèces directement : elles autorisent la
+        /// NAVIGATION vers les zones lointaines — la profondeur est de la géographie.
+        /// </summary>
         public static int DepthLevel(BalanceConfig config, GameState state)
+        {
+            return state.currentZone < 0 ? 0 : state.currentZone;
+        }
+
+        /// <summary>Zone maximale où la coque autorise à naviguer (somme des niveaux DepthLevel).</summary>
+        public static int MaxNavigableZone(BalanceConfig config, GameState state)
         {
             int depth = 0;
             for (int i = 0; i < config.upgrades.Count; i++)
