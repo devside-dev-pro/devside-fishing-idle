@@ -46,13 +46,39 @@ namespace Devside.FishingIdle.Game
             ["leviathan"] = "Léviathan",
         };
 
+        static readonly Dictionary<string, string> IslandNames = new Dictionary<string, string>
+        {
+            ["island_port"] = "Le Vieux Ponton",
+            ["island_lagoon"] = "Lagon Turquoise",
+            ["island_mist"] = "Île des Brumes",
+            ["island_abyss"] = "Porte des Abysses",
+        };
+
         public const string CastAction = "Pêcher !";
         public const string SellAllAction = "Tout vendre";
         public const string PrestigeAction = "PRESTIGE";
         public const string ProducersSection = "— Producteurs —";
         public const string UpgradesSection = "— Améliorations —";
-        public const string CrewTab = "Équipage";
-        public const string UpgradesTab = "Améliorer";
+
+        // Les 5 onglets de la barre du bas (v0.4).
+        public const string BoatTab = "Bateau";
+        public const string MapTab = "Carte";
+        public const string ProfileTab = "Profil";
+        public const string ShopTab = "Boutique";
+
+        public const string MapTitle = "L'archipel";
+        public const string ZoneLockedFormat = "Coque niv. {0}";
+        public const string ProfileTitle = "Capitaine";
+        public const string CollectionSection = "— Poissodex —";
+        public const string StatsSection = "— Statistiques —";
+        public const string UndiscoveredSpecies = "???";
+        public const string StatLifetime = "Gagné depuis le début";
+        public const string StatDiscovered = "Espèces découvertes";
+        public const string StatPrestige = "Points de prestige";
+        public const string StatZone = "Zone actuelle";
+        public const string ShopComingSoon =
+            "Le comptoir ouvre bientôt : perles, coffres, boosts et cosmétiques.\n" +
+            "Les pièces se gagnent en jouant — les perles arriveront avec la boutique.";
         public const string MoneySuffix = "pièces";
         public const string RawLabel = "Brut";
         public const string CutLabel = "Découpé";
@@ -72,5 +98,6 @@ namespace Devside.FishingIdle.Game
         public static string Producer(string id) => ProducerNames.TryGetValue(id, out var name) ? name : id;
         public static string Upgrade(string id) => UpgradeNames.TryGetValue(id, out var name) ? name : id;
         public static string Species(string id) => SpeciesNames.TryGetValue(id, out var name) ? name : id;
+        public static string Island(string id) => IslandNames.TryGetValue(id, out var name) ? name : id;
     }
 }

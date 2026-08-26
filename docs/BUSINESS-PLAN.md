@@ -1,5 +1,9 @@
 # Devside Fishing Idle — Business plan (v1, ~80 %)
 
+> **Validé le 26/08/2026 (Mathieu)**, avec l'arbitrage : les **pièces** sont la
+> monnaie des joueurs free-to-play (gagnables en jouant et via pubs
+> récompensées), les **perles** celle des joueurs payants.
+
 > Document de référence monétisation/UX/roadmap. Règle absolue : **rien de tout
 > ceci n'entre dans le code tant que la boucle de jeu n'est pas prouvée fun** —
 > mais tout ce qu'on code dès maintenant doit laisser la place à ces systèmes

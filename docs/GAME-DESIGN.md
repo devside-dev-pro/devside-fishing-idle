@@ -43,8 +43,12 @@ en 3/4 isométrique sur l'eau, et l'état du jeu incarné physiquement :
 | Paliers de profondeur | L'eau fonce |
 | Pêche manuelle | Tap sur l'eau → poisson qui jaillit + chiffre qui vole |
 
-L'UI devient une surcouche : bandeau de stats en haut, barre d'onglets en bas
-(Équipage / Pêcher / Améliorer) ouvrant des panneaux, bandeau PRESTIGE quand disponible.
+L'UI devient une surcouche : bandeau de stats en haut, barre à **5 onglets** en bas
+(Bateau / Carte / Pêcher / Profil / Boutique — voir BUSINESS-PLAN.md) ouvrant des
+panneaux, bandeau PRESTIGE quand disponible. La Carte montre l'archipel, les îles
+verrouillées par la coque et le bateau en direct ; le Profil porte le Poissodex et
+les statistiques (les équipements arrivent en v0.5) ; la Boutique est un teaser
+tant que la monétisation n'est pas branchée.
 
 Art v1 : packs low-poly **Quaternius** (bateaux pirates, personnages nommés, props,
 poissons) et **Kenney** (props d'appoint), tous CC0 — voir CREDITS.md. `BoatView` charge

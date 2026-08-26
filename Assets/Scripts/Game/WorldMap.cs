@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Devside.FishingIdle.Game
@@ -39,6 +40,12 @@ namespace Devside.FishingIdle.Game
         {
             for (int i = 0; i < Islands.Length; i++) BuildIsland(Islands[i], i);
         }
+
+        /// <summary>Les îles, en lecture (pour la carte de l'archipel).</summary>
+        public static IReadOnlyList<Island> AllIslands => Islands;
+
+        /// <summary>Frontières de zones, en lecture (pour la carte de l'archipel).</summary>
+        public static IReadOnlyList<float> ZoneBoundaries => ZoneRadii;
 
         /// <summary>Zone de profondeur à une position du monde (distance XZ au point de départ).</summary>
         public static int ZoneAt(Vector3 position)
