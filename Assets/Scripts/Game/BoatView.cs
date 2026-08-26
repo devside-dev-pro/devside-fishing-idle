@@ -39,6 +39,10 @@ namespace Devside.FishingIdle.Game
         static readonly string[] ShipTierFallback = { ArtLibrary.ShipSmall, ArtLibrary.ShipSmall, ArtLibrary.ShipLarge };
         static readonly float[] ShipTierLength = { 3.1f, 4.6f, 6f };
 
+        // Enfoncement dans l'eau par palier : une petite barque basse s'enfonce à
+        // peine, sinon l'eau passe à travers son plancher (retour playtest).
+        static readonly float[] ShipTierSink = { 0.08f, 0.22f, 0.28f };
+
         // Emplacements d'équipage en coordonnées normalisées du navire
         // (x : fraction de la longueur — la verticale de l'écran ; z : fraction de la largeur).
         static readonly Vector2[] T1Slots =
@@ -317,7 +321,16 @@ namespace Devside.FishingIdle.Game
             _boat.localPosition = Vector3.zero;
 
             for (int i = _boat.childCount - 1; i >= 0; i--) Destroy(_boat.GetChild(i).gameObject);
-            foreach (var list in _crew) list.Clear();
+            // Les bouchons vivent HORS de la hiérarchie du bateau (positionnés en
+            // monde) : sans destruction explicite ils restent figés sur l'eau au
+            // changement de navire (bug vécu).
+            foreach (var list in _crew)
+            {
+                foreach (var visual in list)
+                    if (visual.bobber != null)
+                        Destroy(visual.bobber.gameObject);
+                list.Clear();
+            }
             _crates.Clear();
 
             float targetLength = ShipTierLength[tier];
@@ -328,7 +341,7 @@ namespace Devside.FishingIdle.Game
                 var bounds = ArtLibrary.MeasureBounds(_ship);
                 if (bounds.size.z > bounds.size.x)
                     _ship.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
-                ArtLibrary.NormalizeToSize(_ship, targetLength, 0.25f);
+                ArtLibrary.NormalizeToSize(_ship, targetLength, ShipTierSink[tier]);
                 ArtLibrary.AddColliders(_ship);
                 Physics.SyncTransforms();
                 bounds = ArtLibrary.MeasureBounds(_ship);
@@ -342,10 +355,20 @@ namespace Devside.FishingIdle.Game
                 _shipWidth = 2.2f;
             }
 
-            // Référence de hauteur : le pont au centre du navire. Les surfaces trop
-            // au-dessus (toit de cabine) ou trop en dessous (ancre au ras de l'eau)
-            // ne comptent pas comme du pont.
-            _deckLevel = RawDeckHeight(0f, 0f) ?? 0.74f;
+            // Référence de hauteur du pont : le PLUS BAS de plusieurs échantillons —
+            // au centre seul, un navire à cabine donnait le TOIT comme référence et
+            // tout (table, équipage) se posait dans le ciel (bug vécu). Les surfaces
+            // trop au-dessus (toits) ou trop en dessous (ancre) sont hors bande.
+            _deckLevel = float.MaxValue;
+            float[] sampleX = { -0.32f, -0.15f, 0f, 0.22f };
+            foreach (float fx in sampleX)
+            {
+                float? y = RawDeckHeight(fx * _shipLength, 0f);
+                if (y.HasValue) _deckLevel = Mathf.Min(_deckLevel, y.Value);
+            }
+            float? side = RawDeckHeight(0f, 0.28f * _shipWidth);
+            if (side.HasValue) _deckLevel = Mathf.Min(_deckLevel, side.Value);
+            if (_deckLevel >= float.MaxValue) _deckLevel = 0.74f;
 
             _slots = new[] { ResolveSlots(T1Slots), ResolveSlots(T2Slots), ResolveSlots(T3Slots) };
             BuildDeckProps();
@@ -386,7 +409,7 @@ namespace Devside.FishingIdle.Game
             {
                 float k = 1f - step * 0.11f;
                 float? y = RawDeckHeight(x * k, z * k);
-                if (y.HasValue && Mathf.Abs(y.Value - _deckLevel) <= 0.45f)
+                if (y.HasValue && Mathf.Abs(y.Value - _deckLevel) <= 0.3f)
                     return new Vector3(x * k, y.Value, z * k);
             }
             return new Vector3(x * 0.3f, _deckLevel, z * 0.3f);

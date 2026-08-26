@@ -83,11 +83,12 @@ namespace Devside.FishingIdle.Core
         public double prestigeBonusPerPoint = 0.04;
 
         /// <summary>
-        /// Multiplicateur de prix au comptoir du marchand (1.25 = +25 %). Appliqué par
-        /// la couche hôte quand le bateau est à quai — récompense le trajet, jamais la
-        /// vente automatique.
+        /// Multiplicateur de prix au comptoir du marchand, appliqué par la couche hôte
+        /// quand le bateau est à quai. Depuis que la vente manuelle N'EXISTE qu'au
+        /// comptoir, un bonus n'a plus de référence : 1 en v1. Levier conservé pour de
+        /// futures îles marchandes aux prix différents (zones profondes).
         /// </summary>
-        public double merchantSellBonus = 1.25;
+        public double merchantSellBonus = 1;
 
         public Dictionary<ResourceId, double> sellPrices = new Dictionary<ResourceId, double>();
         public List<ProducerDef> producers = new List<ProducerDef>();
