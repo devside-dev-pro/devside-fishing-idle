@@ -129,18 +129,28 @@ namespace Devside.FishingIdle.Game
         /// <summary>
         /// Personnage custom retrouvé par fragments de nom (essayés dans l'ordre), car
         /// les fichiers de Art/Custom/Characters sont nommés librement (ex.
-        /// char_capitaine_x.glb). En cas de versions multiples, prend la dernière par
-        /// ordre alphabétique (les v2 remplacent les v1). Null si aucun ne correspond.
+        /// char_capitaine_x.glb). Quand un personnage existe en plusieurs versions
+        /// (une T-pose brute et une animée), la version ANIMÉE gagne : composant
+        /// d'animation présent sur le prefab, indice « anim » dans le nom, malus
+        /// « tpose ». Null si aucun ne correspond.
         /// </summary>
         public static GameObject SpawnCustomCharacter(Transform parent, params string[] nameFragments)
         {
             for (int f = 0; f < nameFragments.Length; f++)
             {
                 GameObject best = null;
+                int bestScore = int.MinValue;
                 foreach (var prefab in CustomCharacters)
                 {
-                    if (!prefab.name.ToLowerInvariant().Contains(nameFragments[f])) continue;
-                    if (best == null || string.CompareOrdinal(prefab.name, best.name) > 0) best = prefab;
+                    string name = prefab.name.ToLowerInvariant();
+                    if (!name.Contains(nameFragments[f])) continue;
+                    int score = CharacterScore(prefab, name);
+                    if (best == null || score > bestScore
+                        || (score == bestScore && string.CompareOrdinal(prefab.name, best.name) > 0))
+                    {
+                        best = prefab;
+                        bestScore = score;
+                    }
                 }
                 if (best == null) continue;
                 var instance = Object.Instantiate(best, parent);
@@ -148,6 +158,17 @@ namespace Devside.FishingIdle.Game
                 return instance;
             }
             return null;
+        }
+
+        /// <summary>Le pont doit vivre : une version animée bat une T-pose brute.</summary>
+        static int CharacterScore(GameObject prefab, string lowerName)
+        {
+            int score = 0;
+            if (prefab.GetComponentInChildren<Animation>(true) != null
+                || prefab.GetComponentInChildren<Animator>(true) != null) score += 4;
+            if (lowerName.Contains("anim")) score += 2;
+            if (lowerName.Contains("tpose") || lowerName.Contains("t_pose") || lowerName.Contains("t-pose")) score -= 3;
+            return score;
         }
 
         /// <summary>Bounds monde combinées de tous les renderers (zéro si aucun).</summary>
