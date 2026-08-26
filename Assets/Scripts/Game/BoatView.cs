@@ -51,6 +51,15 @@ namespace Devside.FishingIdle.Game
         static readonly string[] TierProducerIds = { "fisherman_t1", "fisherman_t2", "fisherman_t3" };
         static readonly string[] TierModelPaths = { ArtLibrary.CrewT1, ArtLibrary.CrewT2, ArtLibrary.CrewT3 };
 
+        // Fragments de noms des personnages custom par tier (fichiers de
+        // Art/Custom/Characters nommés librement, ex. char_marin_pecheur_v2).
+        static readonly string[][] TierCustomFragments =
+        {
+            new[] { "mousse", "marin" },
+            new[] { "pecheur_pro" },
+            new[] { "vieux" },
+        };
+
         class CrewVisual
         {
             public Transform root;
@@ -128,7 +137,7 @@ namespace Devside.FishingIdle.Game
             EnsureShip(state);
 
             for (int tier = 0; tier < 3; tier++)
-                SyncCrew(_crew[tier], _slots[tier], state.ProducerCount(TierProducerIds[tier]), TierModelPaths[tier]);
+                SyncCrew(_crew[tier], _slots[tier], state.ProducerCount(TierProducerIds[tier]), tier);
 
             if (_cuttingStation != null) _cuttingStation.SetActive(state.ProducerCount("cutting_station") > 0);
             if (_filletStation != null) _filletStation.SetActive(state.ProducerCount("fillet_station") > 0);
@@ -193,7 +202,7 @@ namespace Devside.FishingIdle.Game
             if (_camera == null || result == null || result.amount <= 0) return;
 
             Vector3 splash = RaycastWater(screenPosition);
-            StartCoroutine(FishJump(splash));
+            StartCoroutine(FishJump(splash, result.speciesId));
             StartCoroutine(FloatingText(splash + Vector3.up * 0.6f, "+" + Numbers.Format(result.amount), Color.white, 42));
             if (result.newDiscovery)
                 StartCoroutine(FloatingText(splash + Vector3.up * 1.3f,
@@ -355,24 +364,31 @@ namespace Devside.FishingIdle.Game
         void BuildDeckProps()
         {
             // Le capitaine (le joueur !) est toujours à bord, près de la barre.
-            SpawnOnDeck(ArtLibrary.Captain, -0.28f, 0.05f, 0.72f, normalizeHeight: true);
+            SpawnOnDeck(new[] { ArtLibrary.Captain }, -0.28f, 0.05f, 0.72f, normalizeHeight: true,
+                characterFragments: new[] { "capitaine" });
 
-            _cuttingStation = SpawnOnDeck(ArtLibrary.CuttingStation, -0.06f, 0.16f, 0.9f);
-            _filletStation = SpawnOnDeck(ArtLibrary.FilletStation, -0.06f, -0.22f, 0.5f);
+            // Postes de transformation : version custom générée si déposée, pack sinon.
+            _cuttingStation = SpawnOnDeck(
+                new[] { ArtLibrary.CustomProp("cutting_station"), ArtLibrary.CuttingStation }, -0.06f, 0.16f, 0.9f);
+            _filletStation = SpawnOnDeck(
+                new[] { ArtLibrary.CustomProp("fillet_station"), ArtLibrary.FilletStation }, -0.06f, -0.22f, 0.5f);
 
-            // Deux rangées de barils à l'arrière : la jauge physique de la cale.
+            // Deux rangées de barils à l'arrière : la jauge physique de la cale
+            // (le baril custom déborde de poissons — parfait pour une jauge de stock).
             for (int i = 0; i < 6; i++)
             {
                 float fx = -0.42f + i % 2 * 0.055f;
                 float fz = -0.2f + i % 3 * 0.2f;
-                var barrel = SpawnOnDeck(ArtLibrary.Barrel, fx, fz, 0.34f);
+                var barrel = SpawnOnDeck(
+                    new[] { ArtLibrary.CustomProp("fish_barrel"), ArtLibrary.Barrel }, fx, fz, 0.34f);
                 if (barrel != null && i >= 3)
                     barrel.transform.localPosition += Vector3.up * 0.3f;
                 _crates.Add(barrel);
             }
         }
 
-        GameObject SpawnOnDeck(string path, float fx, float fz, float targetSize, bool normalizeHeight = false)
+        GameObject SpawnOnDeck(string[] paths, float fx, float fz, float targetSize,
+            bool normalizeHeight = false, string[] characterFragments = null)
         {
             float x = fx * _shipLength;
             float z = fz * _shipWidth;
@@ -380,7 +396,10 @@ namespace Devside.FishingIdle.Game
             holder.SetParent(_boat, false);
             holder.localPosition = new Vector3(x, DeckHeightAt(x, z), z);
 
-            var model = ArtLibrary.Spawn(path, holder);
+            var model = characterFragments != null
+                ? ArtLibrary.SpawnCustomCharacter(holder, characterFragments)
+                : null;
+            if (model == null) model = ArtLibrary.SpawnFirst(holder, paths);
             if (model == null)
             {
                 Block("Fallback", holder, Vector3.up * (targetSize * 0.5f), Vector3.one * targetSize, FallbackProp);
@@ -396,26 +415,24 @@ namespace Devside.FishingIdle.Game
             return holder.gameObject;
         }
 
+        static readonly string[] AmbientSmallSpecies = { "sardine", "mackerel", "sea_bass" };
+
         void BuildAmbientFish()
         {
             for (int i = 0; i < 5; i++)
-                AddAmbientFish(ArtLibrary.SmallFish[i % ArtLibrary.SmallFish.Length], 0.5f,
+                AddAmbientFish(AmbientSmallSpecies[i % AmbientSmallSpecies.Length],
+                    ArtLibrary.SmallFish[i % ArtLibrary.SmallFish.Length], 0.5f,
                     2.7f + i * 0.5f, 0.28f + (i % 3) * 0.1f, i * 1.9f, -0.03f);
-            AddAmbientFish(ArtLibrary.Shark, 1.1f, 5.4f, 0.22f, 1.2f, -0.05f);
-            AddAmbientFish(ArtLibrary.Manta, 0.95f, 5.9f, 0.16f, 3.8f, -0.08f);
-            AddAmbientFish(ArtLibrary.Whale, 2.3f, 7.2f, 0.08f, 5.5f, -0.18f);
+            AddAmbientFish("abyssal_shark", ArtLibrary.Shark, 1.1f, 5.4f, 0.22f, 1.2f, -0.05f);
+            AddAmbientFish("moonfish", ArtLibrary.Manta, 0.95f, 5.9f, 0.16f, 3.8f, -0.08f);
+            AddAmbientFish("leviathan", ArtLibrary.Whale, 2.3f, 7.2f, 0.08f, 5.5f, -0.18f);
         }
 
-        void AddAmbientFish(string path, float size, float radius, float speed, float phase, float depth)
+        void AddAmbientFish(string speciesId, string packPath, float size, float radius, float speed, float phase, float depth)
         {
             var root = new GameObject("AmbientFish").transform;
-            var model = ArtLibrary.Spawn(path, null);
-            if (model != null)
-            {
-                ArtLibrary.NormalizeToSize(model, size);
-                model.transform.SetParent(root, false);
-            }
-            else
+            var model = SpawnFishModel(speciesId, packPath, size, root);
+            if (model == null)
             {
                 var body = GameObject.CreatePrimitive(PrimitiveType.Sphere).transform;
                 body.SetParent(root, false);
@@ -426,13 +443,34 @@ namespace Devside.FishingIdle.Game
             _ambientFish.Add(new AmbientFish { root = root, radius = radius, speed = speed, phase = phase, depth = depth });
         }
 
+        /// <summary>
+        /// Modèle d'un poisson : l'espèce custom générée (Meshy — créée de profil, nez
+        /// en +x, on la tourne vers +z comme les modèles du pack) si elle est déposée
+        /// dans Resources/Art/Custom/Fish, sinon le modèle de pack ; null si rien.
+        /// </summary>
+        GameObject SpawnFishModel(string speciesId, string packPath, float size, Transform parent)
+        {
+            GameObject model = null;
+            if (!string.IsNullOrEmpty(speciesId))
+            {
+                model = ArtLibrary.SpawnQuiet(ArtLibrary.CustomFish(speciesId));
+                if (model != null)
+                    model.transform.rotation = Quaternion.Euler(0f, -90f, 0f);
+            }
+            if (model == null) model = ArtLibrary.SpawnQuiet(packPath);
+            if (model == null) return null;
+            ArtLibrary.NormalizeToSize(model, size);
+            model.transform.SetParent(parent, false);
+            return model;
+        }
+
         // ---------- Équipage ----------
 
-        void SyncCrew(List<CrewVisual> crew, Vector3[] slots, int owned, string modelPath)
+        void SyncCrew(List<CrewVisual> crew, Vector3[] slots, int owned, int tier)
         {
             int wanted = Mathf.Min(owned, slots.Length);
             while (crew.Count < wanted)
-                crew.Add(BuildCrewMember(slots[crew.Count], modelPath));
+                crew.Add(BuildCrewMember(slots[crew.Count], tier));
             for (int i = 0; i < crew.Count; i++)
             {
                 bool active = i < wanted;
@@ -444,7 +482,7 @@ namespace Devside.FishingIdle.Game
             }
         }
 
-        CrewVisual BuildCrewMember(Vector3 localPosition, string modelPath)
+        CrewVisual BuildCrewMember(Vector3 localPosition, int tier)
         {
             var root = new GameObject("Crew").transform;
             root.SetParent(_boat, false);
@@ -455,7 +493,9 @@ namespace Devside.FishingIdle.Game
             root.localRotation = Quaternion.Euler(0f, yaw, 0f);
 
             // Normalisé hors hiérarchie (le bateau peut être en plein roulis), puis re-parenté.
-            var model = ArtLibrary.Spawn(modelPath, null);
+            // Personnage custom du tier si déposé, modèle Quaternius sinon.
+            var model = ArtLibrary.SpawnCustomCharacter(null, TierCustomFragments[tier]);
+            if (model == null) model = ArtLibrary.SpawnQuiet(TierModelPaths[tier]);
             if (model != null)
             {
                 ArtLibrary.NormalizeToHeight(model, 0.6f);
@@ -552,16 +592,14 @@ namespace Devside.FishingIdle.Game
             return center + new Vector3(1.5f, 0f, 2.2f);
         }
 
-        IEnumerator FishJump(Vector3 from)
+        IEnumerator FishJump(Vector3 from, string speciesId)
         {
+            // Le poisson qui jaillit est la VRAIE espèce attrapée quand son modèle
+            // custom est déposé — la capture d'un léviathan doit se voir !
             var fish = new GameObject("CaughtFish").transform;
-            var model = ArtLibrary.Spawn(ArtLibrary.SmallFish[Random.Range(0, ArtLibrary.SmallFish.Length)], null);
-            if (model != null)
-            {
-                ArtLibrary.NormalizeToSize(model, 0.42f);
-                model.transform.SetParent(fish, false);
-            }
-            else
+            var model = SpawnFishModel(speciesId,
+                ArtLibrary.SmallFish[Random.Range(0, ArtLibrary.SmallFish.Length)], 0.42f, fish);
+            if (model == null)
             {
                 var body = GameObject.CreatePrimitive(PrimitiveType.Sphere).transform;
                 body.SetParent(fish, false);

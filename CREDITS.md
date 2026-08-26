@@ -12,3 +12,9 @@ un crédit public dans le jeu final est prévu même si la licence ne l'exige pa
 
 Le shader d'eau (`Assets/Resources/Shaders/StylizedWater.shader`) et tout le code sont
 écrits pour ce projet.
+
+## Assets générés par IA
+
+Les modèles de `Assets/Resources/Art/Custom/` (13 espèces du Poissodex + props) sont
+générés pour ce projet via Higgsfield (images nano banana → maillages 3D Meshy),
+avec le compte du studio. Recette et paramètres : `docs/ASSET-PIPELINE.md`.

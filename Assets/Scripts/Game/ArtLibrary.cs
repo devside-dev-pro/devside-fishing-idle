@@ -48,6 +48,11 @@ namespace Devside.FishingIdle.Game
             "Art/PirateQuaternius/Environment_Rock_5",
         };
 
+        // Assets custom générés par IA (recette : docs/ASSET-PIPELINE.md), déposés dans
+        // Resources/Art/Custom/. Prioritaires quand présents, repli sur les packs sinon.
+        public static string CustomFish(string speciesId) => "Art/Custom/Fish/" + speciesId;
+        public static string CustomProp(string name) => "Art/Custom/Props/" + name;
+
         // Pack poissons Quaternius.
         public static readonly string[] SmallFish =
         {
@@ -84,16 +89,65 @@ namespace Devside.FishingIdle.Game
         /// <summary>Instancie un modèle de Resources ; null s'il est introuvable (fallback à l'appelant).</summary>
         public static GameObject Spawn(string resourcePath, Transform parent = null)
         {
-            var prefab = Resources.Load<GameObject>(resourcePath);
-            if (prefab == null)
-            {
+            var instance = SpawnQuiet(resourcePath, parent);
+            if (instance == null)
                 Debug.LogWarning($"ArtLibrary : modèle introuvable « {resourcePath} »");
-                return null;
-            }
+            return instance;
+        }
+
+        /// <summary>
+        /// Comme Spawn, sans avertissement : pour les chemins optionnels (assets custom
+        /// pas encore déposés) où l'absence est un cas normal, pas une erreur.
+        /// </summary>
+        public static GameObject SpawnQuiet(string resourcePath, Transform parent = null)
+        {
+            var prefab = Resources.Load<GameObject>(resourcePath);
+            if (prefab == null) return null;
             var instance = Object.Instantiate(prefab, parent);
             var fallbackTexture = resourcePath.StartsWith("Art/PirateQuaternius/") ? PirateAtlas : null;
             FixMaterials(instance, fallbackTexture);
             return instance;
+        }
+
+        /// <summary>Premier modèle disponible parmi plusieurs chemins (custom d'abord, pack ensuite).</summary>
+        public static GameObject SpawnFirst(Transform parent, params string[] paths)
+        {
+            for (int i = 0; i < paths.Length; i++)
+            {
+                var instance = SpawnQuiet(paths[i], parent);
+                if (instance != null) return instance;
+            }
+            return null;
+        }
+
+        static GameObject[] _customCharacters;
+
+        /// <summary>Tous les personnages custom déposés (cache du LoadAll).</summary>
+        static GameObject[] CustomCharacters
+            => _customCharacters ?? (_customCharacters = Resources.LoadAll<GameObject>("Art/Custom/Characters"));
+
+        /// <summary>
+        /// Personnage custom retrouvé par fragments de nom (essayés dans l'ordre), car
+        /// les fichiers de Art/Custom/Characters sont nommés librement (ex.
+        /// char_capitaine_x.glb). En cas de versions multiples, prend la dernière par
+        /// ordre alphabétique (les v2 remplacent les v1). Null si aucun ne correspond.
+        /// </summary>
+        public static GameObject SpawnCustomCharacter(Transform parent, params string[] nameFragments)
+        {
+            for (int f = 0; f < nameFragments.Length; f++)
+            {
+                GameObject best = null;
+                foreach (var prefab in CustomCharacters)
+                {
+                    if (!prefab.name.ToLowerInvariant().Contains(nameFragments[f])) continue;
+                    if (best == null || string.CompareOrdinal(prefab.name, best.name) > 0) best = prefab;
+                }
+                if (best == null) continue;
+                var instance = Object.Instantiate(best, parent);
+                FixMaterials(instance);
+                return instance;
+            }
+            return null;
         }
 
         /// <summary>Bounds monde combinées de tous les renderers (zéro si aucun).</summary>
