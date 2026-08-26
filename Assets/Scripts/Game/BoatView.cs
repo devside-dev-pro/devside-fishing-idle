@@ -175,16 +175,29 @@ namespace Devside.FishingIdle.Game
             AnimateAmbientFish(t);
         }
 
+        /// <summary>Cadre au mouillage : le bateau n'occupe qu'un gros quart de l'écran.</summary>
+        const float IdleOrthoSize = 7.4f;
+
+        /// <summary>Dézoom supplémentaire en navigation, pour voir où l'on va.</summary>
+        const float SailOrthoBonus = 2.4f;
+
+        const float ZoomSpeed = 3.5f;
+
         /// <summary>
         /// Suivi du bateau, appelé par BoatController après le déplacement : la caméra
-        /// reste cadrée sur la coque, le plan d'eau glisse sous elle (le bruit du shader
-        /// est en coordonnées monde, donc l'eau « défile » vraiment), et l'anneau
-        /// d'écume reçoit position + cap.
+        /// reste cadrée sur la coque et dézoome pendant la navigation, le plan d'eau
+        /// glisse sous elle (le bruit du shader est en coordonnées monde, donc l'eau
+        /// « défile » vraiment), et l'anneau d'écume reçoit position + cap.
         /// </summary>
         public void FollowBoat(Transform root)
         {
             if (_camera != null)
+            {
                 _camera.transform.position = root.position - _camera.transform.forward * 22f + _camera.transform.up * 0.7f;
+                float throttle = Mathf.Min(1f, VirtualJoystick.Direction.magnitude);
+                _camera.orthographicSize = Mathf.MoveTowards(
+                    _camera.orthographicSize, IdleOrthoSize + SailOrthoBonus * throttle, ZoomSpeed * Time.deltaTime);
+            }
             if (_water != null)
                 _water.transform.position = new Vector3(root.position.x, 0f, root.position.z);
             if (_stylizedWater && _waterMaterial != null)
@@ -221,7 +234,7 @@ namespace Devside.FishingIdle.Game
                 _camera.tag = "MainCamera";
             }
             _camera.orthographic = true;
-            _camera.orthographicSize = 5.4f;
+            _camera.orthographicSize = IdleOrthoSize;
             _camera.transform.rotation = Quaternion.Euler(70f, 90f, 0f);
             _camera.transform.position = -_camera.transform.forward * 22f + _camera.transform.up * 0.7f;
             _camera.clearFlags = CameraClearFlags.SolidColor;
