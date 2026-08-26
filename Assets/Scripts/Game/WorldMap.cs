@@ -136,6 +136,56 @@ namespace Devside.FishingIdle.Game
             }
 
             if (island.hasMerchant) BuildMerchantOutpost(island, root);
+            BuildSignatureDecor(island, root);
+        }
+
+        /// <summary>
+        /// La touche propre à chaque île (packs itch.io — voir CREDITS.md) : tonneaux
+        /// au port, corail au lagon, campement dans les brumes, trésor aux abysses.
+        /// Chaque prop est optionnel : l'île reste correcte si un modèle manque.
+        /// </summary>
+        static void BuildSignatureDecor(Island island, Transform root)
+        {
+            switch (island.id)
+            {
+                case "island_port":
+                    PlaceProp(island, root, ArtLibrary.Tropical("Barrel_04"), 0.5f, 5.6f, 0.62f);
+                    PlaceProp(island, root, ArtLibrary.Tropical("Plank_01"), 0.9f, 5.1f, 0.7f);
+                    PlaceProp(island, root, ArtLibrary.Kay("rope_bundle_A"), 0.3f, 5.9f, 0.5f);
+                    break;
+                case "island_lagoon":
+                    PlaceProp(island, root, ArtLibrary.Tropical("CoralReef_01"), 2.2f, 0.8f, 1.35f, up: -0.15f);
+                    PlaceProp(island, root, ArtLibrary.Tropical("Plant_01"), 0.5f, 2.4f, 0.55f);
+                    PlaceProp(island, root, ArtLibrary.Tropical("Plant_01"), 0.4f, 3.6f, 0.68f);
+                    break;
+                case "island_mist":
+                    PlaceProp(island, root, ArtLibrary.Tropical("Tent_01"), 1.4f, 1.2f, 0.45f);
+                    PlaceProp(island, root, ArtLibrary.Kay("lantern"), 0.3f, 1.7f, 0.58f);
+                    PlaceProp(island, root, ArtLibrary.Kay("torch"), 0.5f, 2.6f, 0.6f);
+                    break;
+                case "island_abyss":
+                    PlaceProp(island, root, ArtLibrary.Tropical("Chest_01"), 0.65f, 1.1f, 0.5f);
+                    PlaceProp(island, root, ArtLibrary.Tropical("Skull_01"), 0.35f, 1.6f, 0.58f);
+                    PlaceProp(island, root, ArtLibrary.Tropical("PirateSword_01"), 0.5f, 2.1f, 0.45f);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Pose un prop autour du centre de l'île : angle en radians, distance en
+        /// fraction du rayon (au-delà de 1 = dans l'eau), hauteur par défaut au niveau
+        /// du sommet de la plage.
+        /// </summary>
+        static void PlaceProp(Island island, Transform root, string path, float size,
+            float angle, float distanceFactor, float up = 0.32f)
+        {
+            var prop = ArtLibrary.Spawn(path, root);
+            if (prop == null) return;
+            prop.transform.rotation = Quaternion.Euler(0f, angle * Mathf.Rad2Deg, 0f);
+            ArtLibrary.NormalizeToSize(prop, size);
+            prop.transform.position +=
+                new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * (island.radius * distanceFactor)
+                + Vector3.up * up;
         }
 
         /// <summary>Comptoir du marchand : ponton tourné vers le large, cabane, et le marchand qui attend.</summary>
@@ -146,7 +196,9 @@ namespace Devside.FishingIdle.Game
             toSea.y = 0f;
             toSea = toSea.sqrMagnitude < 0.01f ? Vector3.right : toSea.normalized;
 
-            var dock = ArtLibrary.Spawn(ArtLibrary.Dock, root);
+            // Ponton du pack tropical en priorité (bien plus « plage » que le dock
+            // pirate), repli Quaternius si le pack manque.
+            var dock = ArtLibrary.SpawnFirst(root, ArtLibrary.Tropical("Pier_02"), ArtLibrary.Dock);
             if (dock != null)
             {
                 // Même convention que le navire : l'axe long du modèle est ramené sur +x,
@@ -157,6 +209,14 @@ namespace Devside.FishingIdle.Game
                 dock.transform.rotation = Quaternion.Euler(0f, seaYaw + baseYaw, 0f);
                 ArtLibrary.NormalizeToSize(dock, 2.6f);
                 dock.transform.position += toSea * (island.radius * 0.8f) + Vector3.up * 0.05f;
+            }
+
+            // Une lanterne au bout du ponton : le comptoir se repère de loin.
+            var lantern = ArtLibrary.SpawnQuiet(ArtLibrary.Kay("lantern"), root);
+            if (lantern != null)
+            {
+                ArtLibrary.NormalizeToSize(lantern, 0.22f);
+                lantern.transform.position += toSea * (island.radius * 0.95f) + Vector3.up * 0.28f;
             }
 
             var house = ArtLibrary.Spawn(ArtLibrary.House, root);

@@ -25,6 +25,12 @@ namespace Devside.FishingIdle.Game
         public const string House = "Art/PirateQuaternius/Environment_House1";
         public const string Merchant = "Art/PirateQuaternius/Characters_Sharky";
 
+        // Packs itch.io déposés dans Resources/Art/Custom/ (licences : CREDITS.md).
+        public static string Tropical(string name) => "Art/Custom/TropicalIsland/" + name;
+        public static string Beach(string name) => "Art/Custom/BeachProps/Models/" + name;
+        public static string Kay(string name) => "Art/Custom/kaykitrpg/fbx(unity)/" + name;
+        public static string Rpg(string name) => "Art/Custom/PixelRPG/" + name;
+
         // Décor d'îles : plusieurs variantes pour que chaque île ait sa silhouette.
         public static readonly string[] Cliffs =
         {
@@ -35,14 +41,18 @@ namespace Devside.FishingIdle.Game
         };
         public static readonly string[] Palms =
         {
+            "Art/Custom/TropicalIsland/PalmTree_05",
             "Art/PirateQuaternius/Environment_PalmTree_1",
+            "Art/Custom/BeachProps/Models/Palm",
             "Art/PirateQuaternius/Environment_PalmTree_2",
             "Art/PirateQuaternius/Environment_PalmTree_3",
         };
         public static readonly string[] Rocks =
         {
+            "Art/Custom/TropicalIsland/Rock_01",
             "Art/PirateQuaternius/Environment_Rock_1",
             "Art/PirateQuaternius/Environment_Rock_2",
+            "Art/Custom/PixelRPG/Rock",
             "Art/PirateQuaternius/Environment_Rock_3",
             "Art/PirateQuaternius/Environment_Rock_4",
             "Art/PirateQuaternius/Environment_Rock_5",
@@ -54,37 +64,35 @@ namespace Devside.FishingIdle.Game
         public static string CustomProp(string name) => "Art/Custom/Props/" + name;
         public static string CustomShip(string name) => "Art/Custom/Ships/" + name;
 
-        // Pack poissons Quaternius.
-        public static readonly string[] SmallFish =
-        {
-            "Art/FishQuaternius/Fish1",
-            "Art/FishQuaternius/Fish2",
-            "Art/FishQuaternius/Fish3",
-        };
-        public const string Shark = "Art/FishQuaternius/Shark";
-        public const string Manta = "Art/FishQuaternius/Manta ray";
-        public const string Whale = "Art/FishQuaternius/Whale";
-
         static readonly Dictionary<Material, Material> FixedMaterials = new Dictionary<Material, Material>();
-        static Texture2D _pirateAtlas;
-        static bool _pirateAtlasLoaded;
 
         /// <summary>
-        /// L'atlas du pack pirate : les FBX Quaternius ne lient pas leur texture à
-        /// l'import, on la force sur les matériaux sans texture de ce pack (sinon tout
-        /// le navire et l'équipage sortent blancs).
+        /// Atlas par pack : certains FBX (Quaternius, et parfois les packs itch) ne
+        /// lient pas leur texture à l'import — on la force sur les matériaux sans
+        /// texture du pack concerné (sinon les modèles sortent blancs).
         /// </summary>
-        static Texture2D PirateAtlas
+        static readonly (string prefix, string texturePath)[] PackAtlases =
         {
-            get
+            ("Art/PirateQuaternius/", "Art/PirateQuaternius/Atlas_Pirate"),
+            ("Art/Custom/TropicalIsland/", "Art/Custom/TropicalIsland/TropicalEnvironmentLite_Texture_01"),
+            ("Art/Custom/BeachProps/", "Art/Custom/BeachProps/Textures/BeachPropsAtlas_Default"),
+            ("Art/Custom/kaykitrpg/", "Art/Custom/kaykitrpg/Textures/tools_bits_texture"),
+        };
+        static readonly Dictionary<string, Texture2D> AtlasCache = new Dictionary<string, Texture2D>();
+
+        static Texture2D PackAtlasFor(string resourcePath)
+        {
+            for (int i = 0; i < PackAtlases.Length; i++)
             {
-                if (!_pirateAtlasLoaded)
+                if (!resourcePath.StartsWith(PackAtlases[i].prefix)) continue;
+                if (!AtlasCache.TryGetValue(PackAtlases[i].texturePath, out var atlas))
                 {
-                    _pirateAtlasLoaded = true;
-                    _pirateAtlas = Resources.Load<Texture2D>("Art/PirateQuaternius/Atlas_Pirate");
+                    atlas = Resources.Load<Texture2D>(PackAtlases[i].texturePath);
+                    AtlasCache[PackAtlases[i].texturePath] = atlas;
                 }
-                return _pirateAtlas;
+                return atlas;
             }
+            return null;
         }
 
         /// <summary>Instancie un modèle de Resources ; null s'il est introuvable (fallback à l'appelant).</summary>
@@ -105,8 +113,7 @@ namespace Devside.FishingIdle.Game
             var prefab = Resources.Load<GameObject>(resourcePath);
             if (prefab == null) return null;
             var instance = Object.Instantiate(prefab, parent);
-            var fallbackTexture = resourcePath.StartsWith("Art/PirateQuaternius/") ? PirateAtlas : null;
-            FixMaterials(instance, fallbackTexture);
+            FixMaterials(instance, PackAtlasFor(resourcePath));
             return instance;
         }
 
@@ -267,12 +274,18 @@ namespace Devside.FishingIdle.Game
             if (source.shader != null
                 && source.shader.name.IndexOf("gltf", System.StringComparison.OrdinalIgnoreCase) >= 0)
                 return source;
-            if (source.shader != null && source.shader.name.Contains("Universal") && source.mainTexture != null)
+            // Un matériau déjà URP est bon tel quel — sauf s'il est sans texture et
+            // qu'on a un atlas de pack à lui forcer (cas des FBX importés sans lien
+            // texture). Les packs aux matériaux juste colorés (PixelRPG) restent
+            // intacts : les remplacer perdrait leur couleur (_BaseColor, pas _Color).
+            if (source.shader != null && source.shader.name.Contains("Universal")
+                && (source.mainTexture != null || fallbackTexture == null))
                 return source;
             if (FixedMaterials.TryGetValue(source, out var cached)) return cached;
 
             var material = new Material(lit) { name = source.name + " (URP)" };
-            if (source.HasProperty("_Color")) material.color = source.color;
+            if (source.HasProperty("_BaseColor")) material.color = source.GetColor("_BaseColor");
+            else if (source.HasProperty("_Color")) material.color = source.color;
             var texture = source.HasProperty("_MainTex") ? source.mainTexture : null;
             if (texture == null) texture = fallbackTexture;
             if (texture != null) material.mainTexture = texture;
