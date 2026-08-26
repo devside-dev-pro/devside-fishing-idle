@@ -90,6 +90,20 @@ namespace Devside.FishingIdle.Core.Tests
         }
 
         [Test]
+        public void Tick_AutoSell_UsesHostSellPrice()
+        {
+            // Le comptoir d'une île lointaine paie mieux : l'hôte injecte le prix,
+            // la vente automatique en profite comme la vente manuelle.
+            var config = TestConfigs.Simple();
+            var state = new GameState { autoSellUnlocked = true };
+            state.GetOrCreateProducer("fisher").count = 1;
+
+            Simulation.Tick(config, state, 10, allowAutoSell: true, sellPriceMultiplier: 1.5);
+
+            Assert.That(state.money, Is.EqualTo(15).Within(1e-9), "10 bruts à 1 pièce, +50 % au comptoir");
+        }
+
+        [Test]
         public void CastLine_AppliesRodMultiplier()
         {
             var config = TestConfigs.Simple();

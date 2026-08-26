@@ -17,8 +17,13 @@ namespace Devside.FishingIdle.Core
         /// est false — pas de comptoir en mer), la production primaire s'arrête cale pleine.
         /// Les transformations, elles, ne gonflent jamais le stock (ratios ≥ 1:1) — les
         /// filets le compressent même, ce qui libère de la place hors-ligne.
+        ///
+        /// <paramref name="sellPriceMultiplier"/> est le prix du comptoir où le bateau
+        /// se trouve (les îles lointaines paient mieux) : le Core ne connaît pas la
+        /// géographie, l'hôte injecte le multiplicateur.
         /// </summary>
-        public static void Tick(BalanceConfig config, GameState state, double dt, bool allowAutoSell = true)
+        public static void Tick(BalanceConfig config, GameState state, double dt,
+            bool allowAutoSell = true, double sellPriceMultiplier = 1)
         {
             if (dt <= 0) return;
 
@@ -55,7 +60,7 @@ namespace Devside.FishingIdle.Core
                 state.AddResource(def.output, produced);
             }
 
-            if (selling) Economy.SellAll(config, state);
+            if (selling) Economy.SellAll(config, state, sellPriceMultiplier);
         }
 
         /// <summary>

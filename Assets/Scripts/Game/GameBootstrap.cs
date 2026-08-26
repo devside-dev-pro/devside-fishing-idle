@@ -34,25 +34,29 @@ namespace Devside.FishingIdle.Game
         }
 
         /// <summary>
-        /// Le bateau est-il au comptoir d'une île marchande ? C'est la seule condition
-        /// de vente du jeu : sans elle, la vente automatique achetée en boutique
-        /// écoulerait la pêche en pleine mer et l'île n'aurait plus d'intérêt
-        /// (retour playtest). Le Core ne connaît pas la géographie : c'est l'hôte
-        /// qui autorise, ou non, la vente à chaque tick.
+        /// Le comptoir où le bateau est accosté, ou null en mer. C'est la seule
+        /// condition de vente du jeu : sans elle, la vente automatique achetée en
+        /// boutique écoulerait la pêche en pleine mer et les îles n'auraient plus
+        /// d'intérêt (retour playtest). Le Core ne connaît pas la géographie : c'est
+        /// l'hôte qui autorise la vente, et à quel prix (les îles lointaines paient mieux).
         /// </summary>
-        public static bool AtMerchant
+        public static WorldMap.Island CurrentMerchant
         {
             get
             {
                 var boat = BoatController.Instance;
-                return boat != null && boat.Root != null
-                    && WorldMap.MerchantAt(boat.Root.position) != null;
+                return boat == null || boat.Root == null
+                    ? null
+                    : WorldMap.MerchantAt(boat.Root.position);
             }
         }
 
         void Update()
         {
-            Simulation.Tick(Config, State, Time.deltaTime, allowAutoSell: AtMerchant);
+            var merchant = CurrentMerchant;
+            Simulation.Tick(Config, State, Time.deltaTime,
+                allowAutoSell: merchant != null,
+                sellPriceMultiplier: merchant != null ? merchant.sellBonus : 1);
 
             _saveTimer += Time.deltaTime;
             if (_saveTimer >= SaveIntervalSeconds)

@@ -29,6 +29,12 @@ namespace Devside.FishingIdle.Game
             public int zone;
             public bool hasMerchant;
 
+            /// <summary>
+            /// Prix payé par ce comptoir (1 = prix de base). Aller loin doit rapporter :
+            /// c'est ce qui rend l'exploration rentable, pas seulement plus jolie.
+            /// </summary>
+            public double sellBonus = 1;
+
             /// <summary>Couleur de la plage et de l'intérieur : chaque île a son climat.</summary>
             public Color sand;
             public Color inland;
@@ -53,25 +59,28 @@ namespace Devside.FishingIdle.Game
             new Island
             {
                 id = "island_port", position = new Vector3(7f, 0f, -2.5f), radius = 4.2f,
-                zone = 0, hasMerchant = true,
+                zone = 0, hasMerchant = true, sellBonus = 1,
                 sand = new Color(0.90f, 0.82f, 0.62f), inland = new Color(0.55f, 0.68f, 0.40f),
                 houses = 1, palms = 3, rocks = 3, villagers = 1,
             },
             new Island
             {
                 id = "island_lagoon", position = new Vector3(55f, 0f, -18f), radius = 7.5f, zone = 1,
+                hasMerchant = true, sellBonus = 1.15,
                 sand = new Color(0.96f, 0.90f, 0.72f), inland = new Color(0.48f, 0.72f, 0.42f),
                 houses = 3, palms = 7, rocks = 4, villagers = 2,
             },
             new Island
             {
                 id = "island_mist", position = new Vector3(115f, 0f, 25f), radius = 10f, zone = 2,
+                hasMerchant = true, sellBonus = 1.3,
                 sand = new Color(0.74f, 0.76f, 0.72f), inland = new Color(0.36f, 0.50f, 0.42f),
                 houses = 4, palms = 8, rocks = 6, villagers = 3,
             },
             new Island
             {
                 id = "island_abyss", position = new Vector3(175f, 0f, -35f), radius = 13f, zone = 3,
+                hasMerchant = true, sellBonus = 1.5,
                 sand = new Color(0.46f, 0.42f, 0.48f), inland = new Color(0.30f, 0.27f, 0.36f),
                 houses = 5, palms = 6, rocks = 8, villagers = 3,
             },
@@ -115,6 +124,20 @@ namespace Devside.FishingIdle.Game
                 if (offset.magnitude <= island.BlockRadius + 1.6f) return island;
             }
             return null;
+        }
+
+        /// <summary>Cette position est-elle sur une île (plage comprise) ? — la vie marine l'évite.</summary>
+        public static bool IsOnLand(Vector3 position)
+        {
+            for (int i = 0; i < Islands.Length; i++)
+            {
+                var island = Islands[i];
+                float dx = position.x - island.position.x;
+                float dz = position.z - island.position.z;
+                float reach = island.BlockRadius;
+                if (dx * dx + dz * dz < reach * reach) return true;
+            }
+            return false;
         }
 
         /// <summary>Repousse une position hors des plages : le bateau contourne les îles.</summary>
@@ -213,8 +236,12 @@ namespace Devside.FishingIdle.Game
             {
                 float angle = p * 2.39996f + index;
                 float distance = 0.3f + (p % 4) * 0.16f;
-                Place(root, island, ArtLibrary.Palms[(index + p) % ArtLibrary.Palms.Length],
-                    1.6f + 0.25f * (p % 3), angle, distance, byHeight: true);
+                PlaceFirst(root, island, 1.6f + 0.25f * (p % 3), angle, distance, byHeight: true,
+                    paths: new[]
+                    {
+                        ArtLibrary.Palms[(index + p) % ArtLibrary.Palms.Length],
+                        ArtLibrary.PalmsFallback[(index + p) % ArtLibrary.PalmsFallback.Length],
+                    });
             }
 
             for (int r = 0; r < island.rocks; r++)
@@ -224,13 +251,14 @@ namespace Devside.FishingIdle.Game
                     0.6f + 0.18f * (r % 3), angle, 0.88f, up: SurfaceY * 0.55f);
             }
 
-            // Un ponton de village sur les îles sans comptoir : un port de pêche vit.
-            if (!island.hasMerchant)
+            // Un second ponton de pêche sur les grandes îles : le village vit de la mer
+            // (le comptoir a déjà le sien, côté large).
+            if (island.houses >= 3)
             {
-                float dockAngle = seaAngle + 0.7f;
+                float dockAngle = seaAngle + 1.9f;
                 var outward = new Vector3(Mathf.Cos(dockAngle), 0f, Mathf.Sin(dockAngle));
-                PlaceDock(root, island, outward, 2.4f, 0.88f);
-                Place(root, island, ArtLibrary.Anchor, 0.5f, dockAngle - 0.35f, 0.72f);
+                PlaceDock(root, island, outward, 2.2f, 1f);
+                Place(root, island, ArtLibrary.Anchor, 0.5f, dockAngle - 0.35f, 0.78f);
             }
         }
 
@@ -276,7 +304,7 @@ namespace Devside.FishingIdle.Game
         {
             var toSea = ToSea(island);
 
-            PlaceDock(root, island, toSea, 2.8f, 0.9f);
+            PlaceDock(root, island, toSea, 2.8f, 1.02f);
 
             var house = ArtLibrary.Spawn(ArtLibrary.House, root);
             if (house != null)
@@ -286,7 +314,11 @@ namespace Devside.FishingIdle.Game
                 house.transform.position += toSea * (island.radius * 0.28f) + Vector3.up * SurfaceY;
             }
 
-            var merchant = ArtLibrary.Spawn(ArtLibrary.Merchant, root);
+            // Sharky tient le comptoir du port ; les îles lointaines ont le leur.
+            string merchantPath = island.id == "island_port"
+                ? ArtLibrary.Merchant
+                : ArtLibrary.Villagers[island.zone % ArtLibrary.Villagers.Length];
+            var merchant = ArtLibrary.SpawnFirst(root, merchantPath, ArtLibrary.Merchant);
             if (merchant != null)
             {
                 merchant.transform.rotation = Quaternion.LookRotation(toSea);
@@ -334,6 +366,20 @@ namespace Devside.FishingIdle.Game
         /// <summary>Yaw (degrés) d'un objet placé à cet angle pour qu'il regarde le centre de l'île.</summary>
         static float FaceCenterYaw(float angle)
             => Mathf.Atan2(-Mathf.Cos(angle), -Mathf.Sin(angle)) * Mathf.Rad2Deg;
+
+        /// <summary>Comme Place, en essayant plusieurs modèles dans l'ordre (le premier présent gagne).</summary>
+        static GameObject PlaceFirst(Transform root, Island island, float size, float angle,
+            float distanceFactor, bool byHeight = false, float up = SurfaceY, string[] paths = null)
+        {
+            if (paths == null) return null;
+            for (int i = 0; i < paths.Length; i++)
+            {
+                var model = Place(root, island, paths[i], size, angle, distanceFactor,
+                    byHeight: byHeight, up: up);
+                if (model != null) return model;
+            }
+            return null;
+        }
 
         /// <summary>
         /// Pose un modèle sur l'île : <paramref name="angle"/> (radians) et

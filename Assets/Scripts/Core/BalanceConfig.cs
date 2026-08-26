@@ -82,13 +82,9 @@ namespace Devside.FishingIdle.Core
         /// <summary>Bonus de production par point de prestige (0.04 = +4 %).</summary>
         public double prestigeBonusPerPoint = 0.04;
 
-        /// <summary>
-        /// Multiplicateur de prix au comptoir du marchand, appliqué par la couche hôte
-        /// quand le bateau est à quai. Depuis que la vente manuelle N'EXISTE qu'au
-        /// comptoir, un bonus n'a plus de référence : 1 en v1. Levier conservé pour de
-        /// futures îles marchandes aux prix différents (zones profondes).
-        /// </summary>
-        public double merchantSellBonus = 1;
+        // NB : le prix payé par un comptoir dépend de l'ÎLE (les zones profondes
+        // paient mieux) — c'est de la géographie, donc la couche hôte l'injecte dans
+        // Economy.Sell / Simulation.Tick. Aucun bonus de marchand ici.
 
         public Dictionary<ResourceId, double> sellPrices = new Dictionary<ResourceId, double>();
         public List<ProducerDef> producers = new List<ProducerDef>();

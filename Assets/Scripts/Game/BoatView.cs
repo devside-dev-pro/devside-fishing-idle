@@ -504,10 +504,10 @@ namespace Devside.FishingIdle.Game
         {
             for (int i = 0; i < 6; i++)
                 AddAmbientFish(AmbientSmallSpecies[i % AmbientSmallSpecies.Length],
-                    0.5f, 1.15f + i * 0.12f, -0.2f - (i % 3) * 0.06f);
-            AddAmbientFish("abyssal_shark", 1.1f, 1.6f, -0.3f);
-            AddAmbientFish("moonfish", 0.95f, 0.95f, -0.26f);
-            AddAmbientFish("leviathan", 2.3f, 0.75f, -0.42f);
+                    0.5f, 1.15f + i * 0.12f, -0.12f - (i % 3) * 0.05f);
+            AddAmbientFish("abyssal_shark", 1.1f, 1.6f, -0.26f);
+            AddAmbientFish("moonfish", 0.95f, 0.95f, -0.2f);
+            AddAmbientFish("leviathan", 2.3f, 0.75f, -0.4f);
         }
 
         void AddAmbientFish(string speciesId, float size, float speed, float baseDepth)
@@ -541,12 +541,20 @@ namespace Devside.FishingIdle.Game
         /// </summary>
         void ReleaseAmbientFish(AmbientFish fish, Vector3 center, bool spread = false)
         {
-            float angle = Random.value * Mathf.PI * 2f;
-            float distance = spread ? Random.Range(3f, FishSpawnRadius) : FishSpawnRadius;
-            fish.root.position = new Vector3(
-                center.x + Mathf.Cos(angle) * distance,
-                fish.baseDepth,
-                center.z + Mathf.Sin(angle) * distance);
+            // Plusieurs essais : un poisson ne doit jamais réapparaître sur une île.
+            var position = Vector3.zero;
+            float angle = 0f;
+            for (int attempt = 0; attempt < 8; attempt++)
+            {
+                angle = Random.value * Mathf.PI * 2f;
+                float distance = spread ? Random.Range(3f, FishSpawnRadius) : FishSpawnRadius;
+                position = new Vector3(
+                    center.x + Mathf.Cos(angle) * distance,
+                    fish.baseDepth,
+                    center.z + Mathf.Sin(angle) * distance);
+                if (!WorldMap.IsOnLand(position)) break;
+            }
+            fish.root.position = position;
             fish.heading = angle + Mathf.PI + Random.Range(-0.9f, 0.9f);
         }
 
@@ -563,7 +571,13 @@ namespace Devside.FishingIdle.Game
             if (model == null) return null;
             model.transform.rotation = Quaternion.Euler(0f, -90f, 0f);
             ArtLibrary.NormalizeToSize(model, size);
+
+            // NormalizeToSize pose les modèles SUR leur point d'ancrage ; pour un
+            // poisson il faut le centrer, sinon il est soit entièrement sous l'eau,
+            // soit posé dessus comme un jouet — jamais à demi immergé.
+            float halfHeight = ArtLibrary.MeasureBounds(model).size.y * 0.5f;
             model.transform.SetParent(parent, false);
+            model.transform.localPosition -= new Vector3(0f, halfHeight, 0f);
             return model;
         }
 
@@ -685,13 +699,16 @@ namespace Devside.FishingIdle.Game
                 var direction = new Vector3(Mathf.Cos(fish.heading), 0f, Mathf.Sin(fish.heading));
 
                 var position = fish.root.position + direction * (fish.speed * dt);
-                position.y = fish.baseDepth + Mathf.Sin(t * 0.45f + fish.divePhase) * 0.3f;
+                position.y = fish.baseDepth + Mathf.Sin(t * 0.45f + fish.divePhase) * 0.18f;
                 fish.root.position = position;
                 fish.root.rotation = Quaternion.LookRotation(direction);
 
+                // Hors du champ, ou en train de traverser une île (un poisson qui nage
+                // sur la plage, c'est le bug le plus visible qui soit) : on le relâche.
                 float dx = position.x - center.x;
                 float dz = position.z - center.z;
-                if (dx * dx + dz * dz > FishRecycleRadius * FishRecycleRadius)
+                if (dx * dx + dz * dz > FishRecycleRadius * FishRecycleRadius
+                    || WorldMap.IsOnLand(position))
                     ReleaseAmbientFish(fish, center);
             }
         }

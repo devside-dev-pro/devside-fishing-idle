@@ -51,13 +51,21 @@ namespace Devside.FishingIdle.Game
             "Art/PirateQuaternius/Environment_Cliff3",
             "Art/PirateQuaternius/Environment_Cliff4",
         };
+        // Palmiers DROITS uniquement : ceux du pack pirate sont modélisés très penchés
+        // (leur emprise en profondeur dépasse leur hauteur), ce qui, dans une vue quasi
+        // du dessus, donne des troncs couchés en travers de l'île (retour playtest).
         public static readonly string[] Palms =
         {
             "Art/Custom/TropicalIsland/PalmTree_05",
-            "Art/PirateQuaternius/Environment_PalmTree_1",
             "Art/Custom/BeachProps/Models/Palm",
+        };
+
+        /// <summary>Repli si les packs itch manquent : silhouettes penchées, mieux que rien.</summary>
+        public static readonly string[] PalmsFallback =
+        {
             "Art/PirateQuaternius/Environment_PalmTree_2",
             "Art/PirateQuaternius/Environment_PalmTree_3",
+            "Art/PirateQuaternius/Environment_PalmTree_1",
         };
         public static readonly string[] Rocks =
         {
