@@ -1,7 +1,12 @@
 # Crédits assets
 
-Tous les assets 3D utilisés sont sous licence CC0 (domaine public). Merci à leurs auteurs —
-un crédit public dans le jeu final est prévu même si la licence ne l'exige pas.
+Chaque pack utilisé est consigné ici avec sa licence (CC0 sauf mention contraire).
+Merci à leurs auteurs — un crédit public dans le jeu final est prévu même si la
+licence ne l'exige pas.
+
+**Règle** : tout nouveau pack téléchargé (itch.io ou ailleurs) ajoute sa ligne au
+tableau au moment du dépôt dans `Assets/Resources/Art/` — licence vérifiée sur la
+page du pack avant téléchargement (voir `docs/ASSET-PIPELINE.md`, « Packs tiers »).
 
 | Pack | Auteur | Licence | Source |
 |---|---|---|---|

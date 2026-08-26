@@ -1,8 +1,45 @@
+# Pipeline d'assets
+
+Deux sources d'assets 3D, complémentaires :
+
+1. **Packs gratuits** (Quaternius, Kenney, itch.io…) — la base du jeu : décor,
+   PNJ, items. Voir « Packs tiers » ci-dessous.
+2. **Génération IA sur mesure** (MCP Higgsfield) — pour ce qui n'existe dans
+   aucun pack : les 13 espèces du Poissodex, props signature, navires. Les
+   crédits sont limités : réserver l'IA à l'introuvable.
+
+## Packs tiers (itch.io, Kenney, Quaternius…)
+
+Mode d'emploi pour intégrer un pack téléchargé sans friction :
+
+1. **Vérifier la licence avant de télécharger** (encart de la page itch.io) :
+   - **CC0 / domaine public** → parfait, aucune condition.
+   - **CC-BY / « credit required »** → OK, crédit obligatoire dans CREDITS.md.
+   - **« Free for commercial use », sans redistribution des fichiers bruts** →
+     OK pour le jeu (dépôt privé), à re-vérifier si le dépôt devient public.
+   - **À écarter** : « personal use only », « non-commercial » — l'ambition
+     Steam/mobile est un usage commercial.
+2. **Consigner le pack** : une ligne dans le tableau de `CREDITS.md` au moment
+   du dépôt (nom, auteur, licence, lien).
+3. **Déposer** dans `Assets/Resources/Art/<NomDuPack>/` (nom court, sans
+   espaces ni accents). Formats : FBX/OBJ importés nativement par Unity,
+   GLB/GLTF via glTFast (déjà en place), `.unitypackage` → Assets ▸ Import
+   Package… (ne pas commiter le `.unitypackage` lui-même). Textures à côté des
+   modèles. Le LFS couvre déjà fbx/obj/glb/textures/audio (`.gitattributes`).
+4. **Câblage par le code** : indiquer le nom du pack et ce qu'il contient (un
+   screenshot du dossier importé suffit) → les chemins entrent dans
+   `ArtLibrary` avec repli (`SpawnFirst`) : le jeu reste jouable si un modèle
+   manque ou change de nom.
+
+Priorités d'après la roadmap : items/potions/coffres (équipements v0.5),
+décor d'îles (végétation, bâtiments portuaires), PNJ marchands/villageois,
+et packs d'**icônes UI 2D** (style candy — chargées via `Resources/UI/Icons`).
+
 # Pipeline d'assets custom (IA)
 
 Recette validée pour produire les modèles 3D maison (poissons du Poissodex, props),
-exécutable via le MCP Higgsfield. Première fournée (13 poissons + 5 props) livrée
-le 26/08/2026 — ids de jobs consignés dans le manifeste de session.
+exécutable via le MCP Higgsfield. Première fournée (13 poissons + 5 props + 3
+navires) livrée le 26/08/2026 — ids de jobs consignés dans le manifeste de session.
 
 ## La recette, étape par étape
 
