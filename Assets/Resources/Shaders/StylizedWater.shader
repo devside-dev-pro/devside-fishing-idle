@@ -81,12 +81,12 @@ Shader "Devside/StylizedWater"
                 float crest = smoothstep(0.66, 0.78, n);
                 color = lerp(color, base * 0.35 + half3(0.6, 0.65, 0.68), crest * 0.4);
 
-                // Écume elliptique autour de la coque (bateau à l'origine, allongé en x).
+                // Écume elliptique discrète au ras de la coque (bateau à l'origine, allongé en x).
                 float d = length(float2(p.x * 0.55, p.y));
-                float ring = smoothstep(_FoamRadius, _FoamRadius - 0.3, d)
-                           * smoothstep(_FoamRadius - 1.2, _FoamRadius - 0.65, d);
-                float foamNoise = vnoise(p * 3.5 + float2(t * 0.35, -t * 0.3));
-                color = lerp(color, _FoamColor.rgb, ring * (0.3 + 0.45 * foamNoise));
+                float ring = smoothstep(_FoamRadius, _FoamRadius - 0.2, d)
+                           * smoothstep(_FoamRadius - 0.7, _FoamRadius - 0.4, d);
+                float foamNoise = vnoise(p * 4.5 + float2(t * 0.35, -t * 0.3));
+                color = lerp(color, _FoamColor.rgb, ring * (0.12 + 0.3 * foamNoise));
 
                 return half4(color, 1);
             }

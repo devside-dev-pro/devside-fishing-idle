@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,13 +7,124 @@ namespace Devside.FishingIdle.Game
     /// <summary>
     /// Petits constructeurs uGUI pour bâtir toute l'UI par code : aucun câblage de scène,
     /// aucun prefab — le repo reste 100 % texte et l'UI se recrée à chaque Play.
+    /// Le look « jeu mobile » vient de trois briques : sprite à coins arrondis généré par
+    /// code (9-slice), ombres portées, et textes gras à contour sombre.
     /// </summary>
     public static class UiKit
     {
         static Font _font;
+        static Sprite _rounded;
+        static readonly Dictionary<string, Sprite> IconCache = new Dictionary<string, Sprite>();
 
         public static Font DefaultFont
             => _font != null ? _font : _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+        /// <summary>Sprite blanc à coins arrondis (9-slice), généré par code — la base de toute l'UI.</summary>
+        public static Sprite Rounded
+        {
+            get
+            {
+                if (_rounded != null) return _rounded;
+                const int size = 64;
+                const float radius = 22f;
+                var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { name = "RoundedRect" };
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        float dx = Mathf.Max(0f, Mathf.Max(radius - x, x - (size - 1 - radius)));
+                        float dy = Mathf.Max(0f, Mathf.Max(radius - y, y - (size - 1 - radius)));
+                        float alpha = Mathf.Clamp01(radius - Mathf.Sqrt(dx * dx + dy * dy) + 0.5f);
+                        tex.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
+                    }
+                }
+                tex.Apply();
+                _rounded = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f),
+                    100f, 0, SpriteMeshType.FullRect, new Vector4(radius + 4, radius + 4, radius + 4, radius + 4));
+                return _rounded;
+            }
+        }
+
+        /// <summary>
+        /// Icône de Resources/UI/Icons (générées par IA) ; null si absente — l'UI reste
+        /// correcte sans (les emplacements d'icônes se masquent).
+        /// </summary>
+        public static Sprite Icon(string name)
+        {
+            if (IconCache.TryGetValue(name, out var cached)) return cached;
+            var tex = Resources.Load<Texture2D>("UI/Icons/" + name);
+            Sprite sprite = null;
+            if (tex != null)
+                sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+            IconCache[name] = sprite;
+            return sprite;
+        }
+
+        /// <summary>Carte à coins arrondis avec ombre portée optionnelle.</summary>
+        public static Image CreateCard(string name, Transform parent, Color fill, bool shadow = true)
+        {
+            var rt = CreateRect(name, parent);
+            var image = rt.gameObject.AddComponent<Image>();
+            image.sprite = Rounded;
+            image.type = Image.Type.Sliced;
+            image.color = fill;
+            if (shadow)
+            {
+                var effect = rt.gameObject.AddComponent<Shadow>();
+                effect.effectColor = new Color(0f, 0f, 0f, 0.35f);
+                effect.effectDistance = new Vector2(0f, -5f);
+            }
+            return image;
+        }
+
+        /// <summary>Contour sombre « cartoon » sur un texte.</summary>
+        public static void AddOutline(Text text, float thickness = 1.6f)
+        {
+            var outline = text.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0.02f, 0.07f, 0.12f, 0.9f);
+            outline.effectDistance = new Vector2(thickness, -thickness);
+        }
+
+        /// <summary>
+        /// Bouton « jeu mobile » : liseré sombre + face colorée arrondie + texte gras à
+        /// contour, et icône optionnelle au-dessus du label (pour les barres d'onglets).
+        /// </summary>
+        public static (Button button, Text label, RectTransform rect) CreateFancyButton(
+            string name, Transform parent, Color fill, int fontSize, Sprite icon = null)
+        {
+            var border = CreateCard(name, parent, new Color(0.03f, 0.08f, 0.13f, 0.92f));
+            var inner = CreateCard("Inner", border.transform, fill, shadow: false);
+            Stretch(inner.rectTransform, 5, 5, 5, 5);
+
+            var button = border.gameObject.AddComponent<Button>();
+            button.targetGraphic = inner;
+            var colors = button.colors;
+            colors.disabledColor = new Color(0.5f, 0.55f, 0.6f, 0.75f);
+            colors.pressedColor = new Color(0.75f, 0.75f, 0.75f);
+            button.colors = colors;
+
+            var label = CreateText("Label", inner.transform, fontSize, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            AddOutline(label);
+            Stretch(label.rectTransform);
+
+            if (icon != null)
+            {
+                var iconImage = CreateRect("Icon", inner.transform).gameObject.AddComponent<Image>();
+                iconImage.sprite = icon;
+                iconImage.preserveAspect = true;
+                iconImage.raycastTarget = false;
+                var iconRt = iconImage.rectTransform;
+                iconRt.anchorMin = new Vector2(0.5f, 1f);
+                iconRt.anchorMax = new Vector2(0.5f, 1f);
+                iconRt.pivot = new Vector2(0.5f, 1f);
+                iconRt.anchoredPosition = new Vector2(0f, -12f);
+                iconRt.sizeDelta = new Vector2(54f, 54f);
+                label.alignment = TextAnchor.LowerCenter;
+                label.rectTransform.offsetMin = new Vector2(0f, 14f);
+            }
+
+            return (button, label, border.rectTransform);
+        }
 
         public static RectTransform CreateRect(string name, Transform parent)
         {

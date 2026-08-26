@@ -154,7 +154,7 @@ namespace Devside.FishingIdle.Game
             if (_stylizedWater)
             {
                 _waterMaterial.SetFloat("_DepthBlend", depth01);
-                _waterMaterial.SetFloat("_FoamRadius", (_shipLength * 0.62f + 0.7f) * scale);
+                _waterMaterial.SetFloat("_FoamRadius", (_shipLength * 0.52f + 0.25f) * scale);
             }
             else
             {
