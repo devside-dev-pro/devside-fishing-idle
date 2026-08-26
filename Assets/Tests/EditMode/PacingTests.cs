@@ -5,9 +5,13 @@ namespace Devside.FishingIdle.Core.Tests
 {
     /// <summary>
     /// Harnais d'équilibrage : un bot glouton joue les premières heures en accéléré sur la
-    /// vraie table (BalanceConfig.Default). Les assertions sont volontairement larges — elles
-    /// protègent le rythme (docs/GAME-DESIGN.md), pas les valeurs exactes. Si un réglage
-    /// d'équilibrage les casse, c'est que le rythme du début de partie a réellement changé.
+    /// vraie table (BalanceConfig.Default). Les assertions protègent le RYTHME dans les
+    /// deux sens : bornes basses (le jeu ne doit pas être trop lent) ET bornes hautes
+    /// (le contenu ne doit pas se consommer en minutes — leçon du premier playtest, où
+    /// tout était acheté en 3 minutes). Les valeurs exactes de BalanceConfig peuvent
+    /// bouger librement tant que ces enveloppes tiennent.
+    /// NB : le bot est glouton (il dépense en continu, n'épargne jamais) — il sous-estime
+    /// donc un joueur qui économise pour les gros achats. Les bornes en tiennent compte.
     /// </summary>
     public class PacingTests
     {
@@ -56,6 +60,8 @@ namespace Devside.FishingIdle.Core.Tests
             return total;
         }
 
+        // ---------- Bornes basses : le jeu ne doit pas être trop lent ----------
+
         [Test]
         public void FirstAutomation_ArrivesWithinTwoMinutes()
         {
@@ -65,17 +71,51 @@ namespace Devside.FishingIdle.Core.Tests
         }
 
         [Test]
-        public void FirstHour_BuildsAnAutomationEmpire()
+        public void FirstHour_BuildsMeaningfulProgress()
         {
             var state = PlayFor(BalanceConfig.Default(), 3600);
 
-            Assert.That(TotalProducers(state), Is.GreaterThanOrEqualTo(15),
-                "après 1 h, l'automatisation doit être largement installée");
-            Assert.That(state.lifetimeMoney, Is.GreaterThan(10_000),
+            Assert.That(TotalProducers(state), Is.GreaterThanOrEqualTo(12),
+                "après 1 h, l'automatisation doit être bien installée");
+            Assert.That(state.lifetimeMoney, Is.GreaterThan(5_000),
                 "l'économie de la première heure est trop lente");
-            Assert.That(state.autoSellUnlocked, Is.True,
-                "la vente auto (fin de la corvée de vente) doit tomber dans la première heure");
         }
+
+        // ---------- Bornes hautes : le contenu ne doit pas se consommer en minutes ----------
+
+        [Test]
+        public void AutoSell_IsNotAffordableInFifteenMinutes()
+        {
+            var state = PlayFor(BalanceConfig.Default(), 900);
+            Assert.That(state.autoSellUnlocked, Is.False,
+                "la vente auto est la fin d'une corvée : elle doit se mériter, pas tomber en 15 minutes");
+        }
+
+        [Test]
+        public void RodUpgrades_CannotBeMaxedInTheFirstHour()
+        {
+            var state = PlayFor(BalanceConfig.Default(), 3600);
+            Assert.That(state.UpgradeLevel("rod"), Is.LessThan(20),
+                "la canne ne doit jamais être proche du max en 1 h (leçon du speedrun du premier playtest)");
+        }
+
+        [Test]
+        public void Collection_IsNotCompleteAfterTwoHours()
+        {
+            var state = PlayFor(BalanceConfig.Default(), 7200);
+            Assert.That(state.discoveredSpecies.Count, Is.LessThan(13),
+                "le Poissodex complet est un objectif long terme, pas un trophée de la première session");
+        }
+
+        [Test]
+        public void Prestige_IsNotReachableInTheFirstHour()
+        {
+            var state = PlayFor(BalanceConfig.Default(), 3600);
+            Assert.That(Prestige.PendingPoints(BalanceConfig.Default(), state), Is.EqualTo(0),
+                "le premier prestige se joue en heures, pas en minutes");
+        }
+
+        // ---------- Forme de la courbe ----------
 
         [Test]
         public void Progression_AcceleratesOverTime()
@@ -83,8 +123,8 @@ namespace Devside.FishingIdle.Core.Tests
             double firstHalf = PlayFor(BalanceConfig.Default(), 1800).lifetimeMoney;
             double full = PlayFor(BalanceConfig.Default(), 3600).lifetimeMoney;
 
-            Assert.That(full, Is.GreaterThan(2 * firstHalf),
-                "la seconde demi-heure doit rapporter plus que la première (courbe exponentielle)");
+            Assert.That(full, Is.GreaterThan(1.6 * firstHalf),
+                "la seconde demi-heure doit rapporter nettement plus que la première (courbe composée)");
         }
     }
 }

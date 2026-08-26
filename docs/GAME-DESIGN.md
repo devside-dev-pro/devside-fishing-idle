@@ -130,10 +130,21 @@ la 6–8ᵉ heure, et un joueur qui prestige 3 fois avant d'avoir tout vu.
   cale ne bride jamais le flux. Subtilité voulue : les ateliers compressent le stock
   (2 découpés → 1 filet), donc transformer augmente la capacité hors-ligne effective.
   `offlineCapSeconds` (72 h) n'est qu'un garde-fou de calcul, pas un levier de gameplay.
-- Prestige : `points = ⌊√(richesse cumulée / 1 M)⌋`, +2 % de production par point (v1).
+- Prestige : `points = ⌊√(richesse cumulée / 25 M)⌋`, +4 % de production par point (v2).
+
+**Équilibrage v2** (leçon du premier playtest : tout le contenu consommé en minutes) :
+- La canne progresse moins vite que son coût (×1,5 de pêche pour ×2,2 de prix) — le clic
+  reste utile mais ne peut plus porter l'économie seul.
+- Valeurs d'espèces compressées (×1 à ×60, au lieu de ×1 à ×5000) : la rareté fait le
+  frisson et le Poissodex, pas des jackpots qui écrasent l'économie.
+- Gros achats espacés : vente auto 15 k, profondeur 50 k → 600 k → 7,2 M (palier 1 en
+  première grosse session, palier 3 en plusieurs jours), prestige à 25 M cumulés.
 
 L'équilibrage se règle **uniquement** dans `BalanceConfig` et se vérifie avec le bot de
-`PacingTests` (première heure simulée) — jamais « au doigt mouillé » en jouant.
+`PacingTests`, qui protège le rythme **dans les deux sens** : bornes basses (pas trop
+lent : premier pêcheur < 2 min, progression réelle en 1 h) et bornes hautes (pas de
+speedrun : pas de vente auto en 15 min, canne loin du max à 1 h, Poissodex incomplet à
+2 h, pas de prestige la première heure) — jamais « au doigt mouillé » en jouant.
 
 ## Hors périmètre v1 (décisions à prendre plus tard)
 
