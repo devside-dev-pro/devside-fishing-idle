@@ -7,28 +7,31 @@ using UnityEngine.UI;
 namespace Devside.FishingIdle.Game
 {
     /// <summary>
-    /// Surcouche UI du diorama (BoatView) — portrait mobile, référence 1080×1920, bâtie par
-    /// code (UiKit). Le centre de l'écran appartient à la scène 3D : bandeau de stats en
-    /// haut, barre d'onglets en bas (Équipage / Pêcher / Améliorations) qui ouvre des
-    /// panneaux, et on pêche aussi en tapant directement sur l'eau. Tous les libellés
-    /// viennent de GameTheme. Ajoute BoatView automatiquement.
+    /// Surcouche UI du diorama (BoatView) — portrait mobile 1080×1920, bâtie par code.
+    /// Look « jeu mobile » : cartes flottantes arrondies avec ombres, boutons à liseré et
+    /// face colorée, textes gras à contour, icônes générées (Resources/UI/Icons, l'UI
+    /// reste correcte si elles manquent). Le centre de l'écran appartient à la scène 3D ;
+    /// on pêche en tapant l'eau ou via le bouton central. Libellés : GameTheme uniquement.
     /// </summary>
     [RequireComponent(typeof(GameBootstrap))]
     public class GameUi : MonoBehaviour
     {
-        const float HeaderHeight = 330f;
-        const float BottomBarHeight = 170f;
+        const float HeaderHeight = 332f;
+        const float BottomBarHeight = 190f;
         const float PrestigeBandHeight = 92f;
-        const float PanelHeight = 900f;
+        const float PanelHeight = 880f;
 
-        static readonly Color HeaderBg = new Color(0.05f, 0.11f, 0.18f, 0.96f);
-        static readonly Color PanelBg = new Color(0.04f, 0.09f, 0.15f, 0.97f);
-        static readonly Color RowBg = new Color(1f, 1f, 1f, 0.07f);
-        static readonly Color Accent = new Color(0.13f, 0.55f, 0.6f);
-        static readonly Color AccentWarm = new Color(0.85f, 0.5f, 0.12f);
-        static readonly Color TabColor = new Color(0.1f, 0.2f, 0.3f);
+        static readonly Color CardBg = new Color(0.07f, 0.16f, 0.24f, 0.97f);
+        static readonly Color PanelBg = new Color(0.06f, 0.13f, 0.2f, 0.98f);
+        static readonly Color RowBg = new Color(1f, 1f, 1f, 0.08f);
+        static readonly Color MoneyGreen = new Color(0.22f, 0.58f, 0.28f);
+        static readonly Color BuyGreen = new Color(0.24f, 0.62f, 0.3f);
+        static readonly Color CastTeal = new Color(0.1f, 0.58f, 0.62f);
+        static readonly Color TabBlue = new Color(0.12f, 0.3f, 0.45f);
+        static readonly Color SellGray = new Color(0.32f, 0.4f, 0.5f);
+        static readonly Color PrestigeOrange = new Color(0.9f, 0.55f, 0.14f);
         static readonly Color TextMain = Color.white;
-        static readonly Color TextDim = new Color(1f, 1f, 1f, 0.65f);
+        static readonly Color TextDim = new Color(1f, 1f, 1f, 0.72f);
         static readonly Color HoldBarColor = new Color(0.35f, 0.75f, 0.95f);
 
         class ShopRow
@@ -47,6 +50,7 @@ namespace Devside.FishingIdle.Game
         RectTransform _holdFill;
         Button _sellButton;
 
+        GameObject _catchBannerCard;
         Text _catchBanner;
         float _catchBannerUntil;
 
@@ -92,8 +96,8 @@ namespace Devside.FishingIdle.Game
             if (_prestigeButton.gameObject.activeSelf != prestigeVisible) _prestigeButton.gameObject.SetActive(prestigeVisible);
             if (prestigeVisible) _prestigeLabel.text = $"{GameTheme.PrestigeAction}  +{pending}";
 
-            if (_catchBanner.gameObject.activeSelf && Time.time > _catchBannerUntil)
-                _catchBanner.gameObject.SetActive(false);
+            if (_catchBannerCard.activeSelf && Time.time > _catchBannerUntil)
+                _catchBannerCard.SetActive(false);
 
             if (PointerDownOnScene())
                 Cast(PointerScreenPosition());
@@ -119,14 +123,13 @@ namespace Devside.FishingIdle.Game
         void ShowBanner(string text)
         {
             _catchBanner.text = text;
-            _catchBanner.gameObject.SetActive(true);
+            _catchBannerCard.SetActive(true);
             _catchBannerUntil = Time.time + 2.2f;
         }
 
         void TogglePanel(GameObject panel, GameObject other)
         {
-            bool show = !panel.activeSelf;
-            panel.SetActive(show);
+            panel.SetActive(!panel.activeSelf);
             other.SetActive(false);
         }
 
@@ -151,7 +154,7 @@ namespace Devside.FishingIdle.Game
 
         void RefreshHeader(BalanceConfig config, GameState state)
         {
-            _moneyText.text = $"{Numbers.Format(state.money)} {GameTheme.MoneySuffix}";
+            _moneyText.text = Numbers.Format(state.money);
             _stocksText.text =
                 $"{GameTheme.RawLabel} {Numbers.Format(state.rawFish)}   ·   " +
                 $"{GameTheme.CutLabel} {Numbers.Format(state.cutFish)}   ·   " +
@@ -215,41 +218,83 @@ namespace Devside.FishingIdle.Game
 
         void BuildHeader(Transform canvas)
         {
-            var header = UiKit.CreatePanel("Header", canvas, HeaderBg);
-            UiKit.AnchorTop(header.rectTransform, 0, HeaderHeight);
+            var header = UiKit.CreateCard("Header", canvas, CardBg);
+            UiKit.AnchorTop(header.rectTransform, 14, HeaderHeight, 14);
 
-            _moneyText = UiKit.CreateText("Money", header.transform, 80, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UiKit.AnchorTop(_moneyText.rectTransform, 22, 92, 30);
+            // Pilule d'argent, façon compteur de cash des jeux mobiles.
+            var moneyPill = UiKit.CreateCard("MoneyPill", header.transform, MoneyGreen, shadow: false);
+            var pillRt = moneyPill.rectTransform;
+            pillRt.anchorMin = new Vector2(0.5f, 1f);
+            pillRt.anchorMax = new Vector2(0.5f, 1f);
+            pillRt.pivot = new Vector2(0.5f, 1f);
+            pillRt.anchoredPosition = new Vector2(0f, -14f);
+            pillRt.sizeDelta = new Vector2(540f, 96f);
 
-            _stocksText = UiKit.CreateText("Stocks", header.transform, 36, TextDim, TextAnchor.MiddleCenter);
-            UiKit.AnchorTop(_stocksText.rectTransform, 118, 46, 30);
+            var coinIcon = UiKit.Icon("coin");
+            if (coinIcon != null)
+            {
+                var icon = UiKit.CreateRect("Coin", moneyPill.transform).gameObject.AddComponent<Image>();
+                icon.sprite = coinIcon;
+                icon.preserveAspect = true;
+                icon.raycastTarget = false;
+                var iconRt = icon.rectTransform;
+                iconRt.anchorMin = new Vector2(0f, 0.5f);
+                iconRt.anchorMax = new Vector2(0f, 0.5f);
+                iconRt.pivot = new Vector2(0f, 0.5f);
+                iconRt.anchoredPosition = new Vector2(14f, 0f);
+                iconRt.sizeDelta = new Vector2(68f, 68f);
+            }
 
-            _metaText = UiKit.CreateText("Meta", header.transform, 32, TextDim, TextAnchor.MiddleCenter);
-            UiKit.AnchorTop(_metaText.rectTransform, 166, 42, 30);
+            _moneyText = UiKit.CreateText("Money", moneyPill.transform, 60, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UiKit.AddOutline(_moneyText, 2f);
+            UiKit.Stretch(_moneyText.rectTransform, 90, 24, 0, 0);
 
-            var holdBar = UiKit.CreatePanel("HoldBar", header.transform, new Color(1, 1, 1, 0.12f));
-            UiKit.AnchorTop(holdBar.rectTransform, 222, 26, 60);
-            var fill = UiKit.CreatePanel("Fill", holdBar.transform, HoldBarColor);
+            _stocksText = UiKit.CreateText("Stocks", header.transform, 34, TextDim, TextAnchor.MiddleCenter);
+            UiKit.AnchorTop(_stocksText.rectTransform, 122, 44, 30);
+
+            _metaText = UiKit.CreateText("Meta", header.transform, 30, TextDim, TextAnchor.MiddleCenter);
+            UiKit.AnchorTop(_metaText.rectTransform, 168, 40, 30);
+
+            var barrelIcon = UiKit.Icon("barrel");
+            if (barrelIcon != null)
+            {
+                var icon = UiKit.CreateRect("Barrel", header.transform).gameObject.AddComponent<Image>();
+                icon.sprite = barrelIcon;
+                icon.preserveAspect = true;
+                icon.raycastTarget = false;
+                icon.rectTransform.anchorMin = new Vector2(0f, 1f);
+                icon.rectTransform.anchorMax = new Vector2(0f, 1f);
+                icon.rectTransform.pivot = new Vector2(0f, 1f);
+                icon.rectTransform.anchoredPosition = new Vector2(36f, -218f);
+                icon.rectTransform.sizeDelta = new Vector2(52f, 52f);
+            }
+
+            var holdBar = UiKit.CreateCard("HoldBar", header.transform, new Color(0f, 0f, 0f, 0.35f), shadow: false);
+            var holdBarRt = holdBar.rectTransform;
+            holdBarRt.anchorMin = new Vector2(0f, 1f);
+            holdBarRt.anchorMax = new Vector2(0.62f, 1f);
+            holdBarRt.offsetMin = new Vector2(104f, -250f);
+            holdBarRt.offsetMax = new Vector2(-8f, -224f);
+            var fill = UiKit.CreateCard("Fill", holdBar.transform, HoldBarColor, shadow: false);
             fill.rectTransform.anchorMin = Vector2.zero;
-            fill.rectTransform.anchorMax = new Vector2(0, 1);
-            fill.rectTransform.offsetMin = Vector2.zero;
-            fill.rectTransform.offsetMax = Vector2.zero;
+            fill.rectTransform.anchorMax = new Vector2(0f, 1f);
+            fill.rectTransform.offsetMin = new Vector2(3f, 3f);
+            fill.rectTransform.offsetMax = new Vector2(-3f, -3f);
             _holdFill = fill.rectTransform;
 
-            _holdText = UiKit.CreateText("HoldText", header.transform, 30, TextDim, TextAnchor.MiddleLeft);
-            var holdRt = _holdText.rectTransform;
-            holdRt.anchorMin = new Vector2(0f, 1f);
-            holdRt.anchorMax = new Vector2(0.6f, 1f);
-            holdRt.offsetMin = new Vector2(60, -300);
-            holdRt.offsetMax = new Vector2(-6, -254);
+            _holdText = UiKit.CreateText("HoldText", header.transform, 28, TextDim, TextAnchor.MiddleLeft);
+            var holdTextRt = _holdText.rectTransform;
+            holdTextRt.anchorMin = new Vector2(0f, 1f);
+            holdTextRt.anchorMax = new Vector2(0.62f, 1f);
+            holdTextRt.offsetMin = new Vector2(106f, -296f);
+            holdTextRt.offsetMax = new Vector2(-6f, -254f);
 
-            var (sellButton, sellLabel) = UiKit.CreateButton("SellAll", header.transform, new Color(0.3f, 0.35f, 0.45f), 30);
+            var (sellButton, sellLabel, sellRect) = UiKit.CreateFancyButton("SellAll", header.transform, SellGray, 30);
             sellLabel.text = GameTheme.SellAllAction;
-            var sellRt = (RectTransform)sellButton.transform;
-            sellRt.anchorMin = new Vector2(0.6f, 1f);
-            sellRt.anchorMax = new Vector2(1f, 1f);
-            sellRt.offsetMin = new Vector2(6, -308);
-            sellRt.offsetMax = new Vector2(-60, -250);
+            sellRect.anchorMin = new Vector2(0.64f, 1f);
+            sellRect.anchorMax = new Vector2(1f, 1f);
+            sellRect.offsetMin = new Vector2(4f, -304f);
+            sellRect.offsetMax = new Vector2(-22f, -222f);
             sellButton.onClick.AddListener(() =>
             {
                 var boot = GameBootstrap.Instance;
@@ -258,15 +303,20 @@ namespace Devside.FishingIdle.Game
             _sellButton = sellButton;
 
             _offlineText = UiKit.CreateText("Offline", canvas, 30, new Color(1f, 0.85f, 0.4f), TextAnchor.MiddleCenter);
-            UiKit.AnchorTop(_offlineText.rectTransform, HeaderHeight + 8, 44, 30);
+            UiKit.AddOutline(_offlineText, 1.2f);
+            UiKit.AnchorTop(_offlineText.rectTransform, HeaderHeight + 26, 44, 30);
             _offlineText.gameObject.SetActive(false);
         }
 
         void BuildCatchBanner(Transform canvas)
         {
-            _catchBanner = UiKit.CreateText("CatchBanner", canvas, 40, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UiKit.AnchorTop(_catchBanner.rectTransform, HeaderHeight + 56, 54, 30);
-            _catchBanner.gameObject.SetActive(false);
+            var card = UiKit.CreateCard("CatchBanner", canvas, new Color(0.04f, 0.1f, 0.16f, 0.9f), shadow: false);
+            UiKit.AnchorTop(card.rectTransform, HeaderHeight + 78, 62, 110);
+            _catchBanner = UiKit.CreateText("Text", card.transform, 36, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UiKit.AddOutline(_catchBanner, 1.4f);
+            UiKit.Stretch(_catchBanner.rectTransform, 16, 16, 0, 0);
+            _catchBannerCard = card.gameObject;
+            _catchBannerCard.SetActive(false);
         }
 
         void BuildPanels(Transform canvas)
@@ -290,15 +340,16 @@ namespace Devside.FishingIdle.Game
 
         GameObject BuildPanel(Transform canvas, string title, out RectTransform content)
         {
-            var panel = UiKit.CreatePanel("Panel", canvas, PanelBg);
-            UiKit.AnchorBottom(panel.rectTransform, BottomBarHeight + PrestigeBandHeight, PanelHeight, 16);
+            var panel = UiKit.CreateCard("Panel", canvas, PanelBg);
+            UiKit.AnchorBottom(panel.rectTransform, BottomBarHeight + PrestigeBandHeight + 6, PanelHeight, 16);
 
             var titleText = UiKit.CreateText("Title", panel.transform, 40, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UiKit.AddOutline(titleText, 1.6f);
             titleText.text = title;
-            UiKit.AnchorTop(titleText.rectTransform, 14, 60, 20);
+            UiKit.AnchorTop(titleText.rectTransform, 14, 58, 20);
 
-            content = UiKit.CreateScrollList("List", panel.transform, new Color(0, 0, 0, 0.2f));
-            UiKit.AnchorVerticalSpan((RectTransform)content.parent, 86, 16, 16);
+            content = UiKit.CreateScrollList("List", panel.transform, new Color(0f, 0f, 0f, 0.18f));
+            UiKit.AnchorVerticalSpan((RectTransform)content.parent, 84, 16, 14);
 
             panel.gameObject.SetActive(false);
             return panel.gameObject;
@@ -306,9 +357,9 @@ namespace Devside.FishingIdle.Game
 
         void BuildPrestigeBand(Transform canvas)
         {
-            var (button, label) = UiKit.CreateButton("Prestige", canvas, AccentWarm, 40);
+            var (button, label, rect) = UiKit.CreateFancyButton("Prestige", canvas, PrestigeOrange, 40);
             label.fontStyle = FontStyle.Bold;
-            UiKit.AnchorBottom(((RectTransform)button.transform), BottomBarHeight + 8, PrestigeBandHeight - 16, 40);
+            UiKit.AnchorBottom(rect, BottomBarHeight + 10, PrestigeBandHeight - 14, 40);
             button.onClick.AddListener(() =>
             {
                 var boot = GameBootstrap.Instance;
@@ -323,23 +374,22 @@ namespace Devside.FishingIdle.Game
 
         void BuildBottomBar(Transform canvas)
         {
-            var bar = UiKit.CreatePanel("BottomBar", canvas, HeaderBg);
-            UiKit.AnchorBottom(bar.rectTransform, 0, BottomBarHeight);
+            var bar = UiKit.CreateCard("BottomBar", canvas, CardBg);
+            UiKit.AnchorBottom(bar.rectTransform, 12, BottomBarHeight, 14);
 
-            var (crewTab, crewLabel) = UiKit.CreateButton("CrewTab", bar.transform, TabColor, 34);
+            var (crewTab, crewLabel, crewRect) = UiKit.CreateFancyButton("CrewTab", bar.transform, TabBlue, 30, UiKit.Icon("crew"));
             crewLabel.text = GameTheme.CrewTab;
-            SetBarSlot((RectTransform)crewTab.transform, 0f, 0.31f);
+            SetBarSlot(crewRect, 0.02f, 0.32f);
             crewTab.onClick.AddListener(() => TogglePanel(_producersPanel, _upgradesPanel));
 
-            var (castButton, castLabel) = UiKit.CreateButton("Cast", bar.transform, Accent, 46);
-            castLabel.fontStyle = FontStyle.Bold;
+            var (castButton, castLabel, castRect) = UiKit.CreateFancyButton("Cast", bar.transform, CastTeal, 38, UiKit.Icon("fish"));
             castLabel.text = GameTheme.CastAction;
-            SetBarSlot((RectTransform)castButton.transform, 0.33f, 0.67f);
+            SetBarSlot(castRect, 0.34f, 0.66f);
             castButton.onClick.AddListener(() => Cast(new Vector2(Screen.width * 0.62f, Screen.height * 0.45f)));
 
-            var (upgradesTab, upgradesLabel) = UiKit.CreateButton("UpgradesTab", bar.transform, TabColor, 34);
+            var (upgradesTab, upgradesLabel, upgradesRect) = UiKit.CreateFancyButton("UpgradesTab", bar.transform, TabBlue, 30, UiKit.Icon("upgrade"));
             upgradesLabel.text = GameTheme.UpgradesTab;
-            SetBarSlot((RectTransform)upgradesTab.transform, 0.69f, 1f);
+            SetBarSlot(upgradesRect, 0.68f, 0.98f);
             upgradesTab.onClick.AddListener(() => TogglePanel(_upgradesPanel, _producersPanel));
         }
 
@@ -347,8 +397,8 @@ namespace Devside.FishingIdle.Game
         {
             rt.anchorMin = new Vector2(xMin, 0f);
             rt.anchorMax = new Vector2(xMax, 1f);
-            rt.offsetMin = new Vector2(xMin <= 0f ? 24 : 0, 24);
-            rt.offsetMax = new Vector2(xMax >= 1f ? -24 : 0, -24);
+            rt.offsetMin = new Vector2(0f, 18f);
+            rt.offsetMax = new Vector2(0f, -18f);
         }
 
         void ShowOfflineSummary()
@@ -363,26 +413,26 @@ namespace Devside.FishingIdle.Game
 
         ShopRow CreateShopRow(Transform parent, System.Action onBuy)
         {
-            var panel = UiKit.CreatePanel("Row", parent, RowBg);
-            panel.gameObject.AddComponent<LayoutElement>().preferredHeight = 120;
+            var card = UiKit.CreateCard("Row", parent, RowBg, shadow: false);
+            card.gameObject.AddComponent<LayoutElement>().preferredHeight = 122;
 
-            var label = UiKit.CreateText("Name", panel.transform, 40, TextMain);
+            var label = UiKit.CreateText("Name", card.transform, 38, TextMain, TextAnchor.MiddleLeft, FontStyle.Bold);
+            UiKit.AddOutline(label, 1.2f);
             var labelRt = label.rectTransform;
             labelRt.anchorMin = Vector2.zero;
             labelRt.anchorMax = Vector2.one;
-            labelRt.offsetMin = new Vector2(28, 0);
-            labelRt.offsetMax = new Vector2(-340, 0);
+            labelRt.offsetMin = new Vector2(30f, 0f);
+            labelRt.offsetMax = new Vector2(-330f, 0f);
 
-            var (button, buttonLabel) = UiKit.CreateButton("Buy", panel.transform, Accent, 36);
-            var buttonRt = (RectTransform)button.transform;
-            buttonRt.anchorMin = new Vector2(1, 0.5f);
-            buttonRt.anchorMax = new Vector2(1, 0.5f);
-            buttonRt.pivot = new Vector2(1, 0.5f);
-            buttonRt.anchoredPosition = new Vector2(-20, 0);
-            buttonRt.sizeDelta = new Vector2(300, 88);
+            var (button, buttonLabel, buttonRect) = UiKit.CreateFancyButton("Buy", card.transform, BuyGreen, 34);
+            buttonRect.anchorMin = new Vector2(1f, 0.5f);
+            buttonRect.anchorMax = new Vector2(1f, 0.5f);
+            buttonRect.pivot = new Vector2(1f, 0.5f);
+            buttonRect.anchoredPosition = new Vector2(-16f, 0f);
+            buttonRect.sizeDelta = new Vector2(300f, 94f);
             button.onClick.AddListener(() => onBuy());
 
-            return new ShopRow { root = panel.gameObject, label = label, button = button, buttonLabel = buttonLabel };
+            return new ShopRow { root = card.gameObject, label = label, button = button, buttonLabel = buttonLabel };
         }
     }
 }

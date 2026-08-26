@@ -36,6 +36,26 @@ namespace Devside.FishingIdle.Game
         public const string Whale = "Art/FishQuaternius/Whale";
 
         static readonly Dictionary<Material, Material> FixedMaterials = new Dictionary<Material, Material>();
+        static Texture2D _pirateAtlas;
+        static bool _pirateAtlasLoaded;
+
+        /// <summary>
+        /// L'atlas du pack pirate : les FBX Quaternius ne lient pas leur texture à
+        /// l'import, on la force sur les matériaux sans texture de ce pack (sinon tout
+        /// le navire et l'équipage sortent blancs).
+        /// </summary>
+        static Texture2D PirateAtlas
+        {
+            get
+            {
+                if (!_pirateAtlasLoaded)
+                {
+                    _pirateAtlasLoaded = true;
+                    _pirateAtlas = Resources.Load<Texture2D>("Art/PirateQuaternius/Atlas_Pirate");
+                }
+                return _pirateAtlas;
+            }
+        }
 
         /// <summary>Instancie un modèle de Resources ; null s'il est introuvable (fallback à l'appelant).</summary>
         public static GameObject Spawn(string resourcePath, Transform parent = null)
@@ -47,7 +67,8 @@ namespace Devside.FishingIdle.Game
                 return null;
             }
             var instance = Object.Instantiate(prefab, parent);
-            FixMaterials(instance);
+            var fallbackTexture = resourcePath.StartsWith("Art/PirateQuaternius/") ? PirateAtlas : null;
+            FixMaterials(instance, fallbackTexture);
             return instance;
         }
 
@@ -114,7 +135,7 @@ namespace Devside.FishingIdle.Game
         /// par des équivalents URP/Lit, en conservant couleur et texture. Mise en cache :
         /// toutes les instances d'un même matériau source partagent le même remplacement.
         /// </summary>
-        public static void FixMaterials(GameObject root)
+        public static void FixMaterials(GameObject root, Texture2D fallbackTexture = null)
         {
             var lit = Shader.Find("Universal Render Pipeline/Lit");
             if (lit == null) return;
@@ -125,7 +146,7 @@ namespace Devside.FishingIdle.Game
                 bool changed = false;
                 for (int i = 0; i < materials.Length; i++)
                 {
-                    var replacement = GetOrCreateUrpMaterial(materials[i], lit);
+                    var replacement = GetOrCreateUrpMaterial(materials[i], lit, fallbackTexture);
                     if (replacement != materials[i])
                     {
                         materials[i] = replacement;
@@ -136,16 +157,18 @@ namespace Devside.FishingIdle.Game
             }
         }
 
-        static Material GetOrCreateUrpMaterial(Material source, Shader lit)
+        static Material GetOrCreateUrpMaterial(Material source, Shader lit, Texture2D fallbackTexture)
         {
             if (source == null) return null;
-            if (source.shader != null && source.shader.name.Contains("Universal")) return source;
+            if (source.shader != null && source.shader.name.Contains("Universal") && source.mainTexture != null)
+                return source;
             if (FixedMaterials.TryGetValue(source, out var cached)) return cached;
 
             var material = new Material(lit) { name = source.name + " (URP)" };
             if (source.HasProperty("_Color")) material.color = source.color;
-            if (source.HasProperty("_MainTex") && source.mainTexture != null)
-                material.mainTexture = source.mainTexture;
+            var texture = source.HasProperty("_MainTex") ? source.mainTexture : null;
+            if (texture == null) texture = fallbackTexture;
+            if (texture != null) material.mainTexture = texture;
             material.SetFloat("_Smoothness", 0.08f);
 
             FixedMaterials[source] = material;
