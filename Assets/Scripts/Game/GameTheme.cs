@@ -90,12 +90,13 @@ namespace Devside.FishingIdle.Game
         public const string CollectionLabel = "Poissodex";
         public const string LevelAbbrev = "niv.";
         public const string NewDiscovery = "★ Découverte !";
-        public const string HoldFullMessage = "Cale pleine — vendez votre stock !";
+        public const string HoldFullMessage = "Cale pleine — retournez vendre au comptoir !";
         public const string HullTooWeak = "Ta coque ne supporte pas ces eaux — renforce-la !";
         public const string ZoneReachedPrefix = "Nouvelles eaux";
         public const string OfflinePrefix = "Pendant votre absence";
         public const string OfflineHoldFull = "cale pleine !";
         public const string FishUnit = "poissons";
+        public const string PerUnitSuffix = "l'unité";
 
         public static string Producer(string id) => ProducerNames.TryGetValue(id, out var name) ? name : id;
         public static string Upgrade(string id) => UpgradeNames.TryGetValue(id, out var name) ? name : id;

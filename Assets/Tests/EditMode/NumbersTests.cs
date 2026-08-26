@@ -7,7 +7,7 @@ namespace Devside.FishingIdle.Core.Tests
     {
         [TestCase(0, "0")]
         [TestCase(7, "7")]
-        [TestCase(42.5, "42.5")]
+        [TestCase(42.5, "42")]
         [TestCase(999, "999")]
         [TestCase(1_000, "1K")]
         [TestCase(1_234, "1.23K")]

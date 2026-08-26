@@ -52,6 +52,7 @@ namespace Devside.FishingIdle.Game
         // Resources/Art/Custom/. Prioritaires quand présents, repli sur les packs sinon.
         public static string CustomFish(string speciesId) => "Art/Custom/Fish/" + speciesId;
         public static string CustomProp(string name) => "Art/Custom/Props/" + name;
+        public static string CustomShip(string name) => "Art/Custom/Ships/" + name;
 
         // Pack poissons Quaternius.
         public static readonly string[] SmallFish =

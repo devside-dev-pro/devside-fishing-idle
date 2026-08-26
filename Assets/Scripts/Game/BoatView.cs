@@ -30,8 +30,14 @@ namespace Devside.FishingIdle.Game
         static readonly Color FallbackProp = new Color(0.72f, 0.55f, 0.28f);
         static readonly Color FallbackFish = new Color(0.16f, 0.32f, 0.42f);
 
-        /// <summary>Bascule vers le grand navire à ce niveau d'extension de cale.</summary>
-        const int LargeShipHoldLevel = 5;
+        // Paliers de navire : on COMMENCE sur une petite barque (retour playtest),
+        // navire moyen au niveau 3 de cale, grand navire au niveau 8 — l'évolution
+        // se fait petit à petit. Modèles custom (Art/Custom/Ships) prioritaires,
+        // packs Quaternius en repli.
+        static readonly int[] ShipTierHoldLevels = { 0, 3, 8 };
+        static readonly string[] ShipTierCustom = { "barque", "chalutier_moyen", "chalutier_grand" };
+        static readonly string[] ShipTierFallback = { ArtLibrary.ShipSmall, ArtLibrary.ShipSmall, ArtLibrary.ShipLarge };
+        static readonly float[] ShipTierLength = { 3.1f, 4.6f, 6f };
 
         // Emplacements d'équipage en coordonnées normalisées du navire
         // (x : fraction de la longueur — la verticale de l'écran ; z : fraction de la largeur).
@@ -84,9 +90,12 @@ namespace Devside.FishingIdle.Game
         bool _stylizedWater;
 
         GameObject _ship;
-        string _shipPath;
+        int _shipTier = -1;
         float _shipLength = 4.5f;
         float _shipWidth = 2f;
+
+        /// <summary>Hauteur du pont au centre du navire — référence de la « bande de pont ».</summary>
+        float _deckLevel = 0.74f;
 
         readonly List<CrewVisual>[] _crew =
         {
@@ -201,7 +210,7 @@ namespace Devside.FishingIdle.Game
             if (_camera != null)
             {
                 _camera.transform.position = root.position - _camera.transform.forward * 22f + _camera.transform.up * 0.7f;
-                float throttle = Mathf.Min(1f, VirtualJoystick.Direction.magnitude);
+                float throttle = Mathf.Min(1f, BoatController.SteerInput.magnitude);
                 _camera.orthographicSize = Mathf.MoveTowards(
                     _camera.orthographicSize, IdleOrthoSize + SailOrthoBonus * throttle, ZoomSpeed * Time.deltaTime);
             }
@@ -289,15 +298,14 @@ namespace Devside.FishingIdle.Game
 
         void EnsureShip(GameState state)
         {
-            string wanted = state.UpgradeLevel("cargo_hold") >= LargeShipHoldLevel
-                ? ArtLibrary.ShipLarge
-                : ArtLibrary.ShipSmall;
-            if (_boat != null && wanted == _shipPath) return;
-            _shipPath = wanted;
-            RebuildShip(wanted);
+            int holdLevel = state.UpgradeLevel("cargo_hold");
+            int tier = holdLevel >= ShipTierHoldLevels[2] ? 2 : holdLevel >= ShipTierHoldLevels[1] ? 1 : 0;
+            if (_boat != null && tier == _shipTier) return;
+            _shipTier = tier;
+            RebuildShip(tier);
         }
 
-        void RebuildShip(string path)
+        void RebuildShip(int tier)
         {
             if (_boat == null) _boat = new GameObject("Boat").transform;
             // Mesures de bounds et raycasts de pont supposent une coque à l'origine en
@@ -312,8 +320,9 @@ namespace Devside.FishingIdle.Game
             foreach (var list in _crew) list.Clear();
             _crates.Clear();
 
-            float targetLength = path == ArtLibrary.ShipLarge ? 5.7f : 4.4f;
-            _ship = ArtLibrary.Spawn(path, _boat);
+            float targetLength = ShipTierLength[tier];
+            _ship = ArtLibrary.SpawnFirst(_boat,
+                ArtLibrary.CustomShip(ShipTierCustom[tier]), ShipTierFallback[tier]);
             if (_ship != null)
             {
                 var bounds = ArtLibrary.MeasureBounds(_ship);
@@ -332,6 +341,11 @@ namespace Devside.FishingIdle.Game
                 _shipLength = 4.5f;
                 _shipWidth = 2.2f;
             }
+
+            // Référence de hauteur : le pont au centre du navire. Les surfaces trop
+            // au-dessus (toit de cabine) ou trop en dessous (ancre au ras de l'eau)
+            // ne comptent pas comme du pont.
+            _deckLevel = RawDeckHeight(0f, 0f) ?? 0.74f;
 
             _slots = new[] { ResolveSlots(T1Slots), ResolveSlots(T2Slots), ResolveSlots(T3Slots) };
             BuildDeckProps();
@@ -361,29 +375,32 @@ namespace Devside.FishingIdle.Game
         /// <summary>
         /// Point de pont SÛR : les bounds du navire dépassent le pont réel (ancre sur
         /// la coque, beaupré...), donc un point calculé en fractions des bounds peut
-        /// tomber dans l'eau (bug vécu : l'équipage à côté du bateau). On ramène le
-        /// point vers le centre par paliers jusqu'à ce que le raycast touche du pont.
+        /// tomber dans l'eau OU sur une protubérance (bug vécu deux fois : l'équipage
+        /// à côté du bateau, puis debout sur l'ancre « dans le vide »). On ramène le
+        /// point vers le centre par paliers jusqu'à toucher une surface DANS LA BANDE
+        /// DU PONT (± 0.45 autour de la hauteur du pont au centre).
         /// </summary>
         Vector3 ResolveDeckPoint(float x, float z)
         {
-            for (int step = 0; step < 6; step++)
+            for (int step = 0; step < 8; step++)
             {
-                float k = 1f - step * 0.15f;
-                if (TryDeckHeight(x * k, z * k, out float y))
-                    return new Vector3(x * k, y, z * k);
+                float k = 1f - step * 0.11f;
+                float? y = RawDeckHeight(x * k, z * k);
+                if (y.HasValue && Mathf.Abs(y.Value - _deckLevel) <= 0.45f)
+                    return new Vector3(x * k, y.Value, z * k);
             }
-            return new Vector3(x * 0.4f, 0.74f, z * 0.4f);
+            return new Vector3(x * 0.3f, _deckLevel, z * 0.3f);
         }
 
         /// <summary>
-        /// Hauteur du pont à un point (x, z) local : raycast vertical sur les colliders
-        /// du navire, en gardant la surface la plus basse au-dessus de la flottaison
-        /// (les voiles et mâts, plus hauts, sont ignorés). False si rien sous le point.
+        /// Hauteur de la surface la plus basse au-dessus de la flottaison à (x, z)
+        /// local (raycast sur les colliders du navire ; voiles et mâts, plus hauts,
+        /// ignorés). Null si rien sous le point. Sans filtre de bande : c'est
+        /// ResolveDeckPoint qui juge si c'est vraiment du pont.
         /// </summary>
-        bool TryDeckHeight(float x, float z, out float height)
+        float? RawDeckHeight(float x, float z)
         {
-            height = 0.74f;
-            if (_ship == null) return true; // navire de secours : pont plat connu
+            if (_ship == null) return 0.74f; // navire de secours : pont plat connu
             var hits = Physics.RaycastAll(new Vector3(x, 8f, z), Vector3.down, 16f);
             float best = float.MaxValue;
             foreach (var hit in hits)
@@ -392,9 +409,8 @@ namespace Devside.FishingIdle.Game
                 if (hit.point.y < 0.05f) continue;
                 if (hit.point.y < best) best = hit.point.y;
             }
-            if (best >= float.MaxValue) return false;
-            height = best + 0.02f;
-            return true;
+            if (best >= float.MaxValue) return null;
+            return best + 0.02f;
         }
 
         void BuildDeckProps()
