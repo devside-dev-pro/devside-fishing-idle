@@ -69,7 +69,9 @@ namespace Devside.FishingIdle.Game
                 var island = Islands[i];
                 if (!island.hasMerchant) continue;
                 var offset = new Vector2(position.x - island.position.x, position.z - island.position.z);
-                if (offset.magnitude <= island.radius + 2.5f) return island;
+                // Rayon serré : « à quai » veut dire collé à l'île, pas à deux
+                // longueurs de bateau (le bouton de vente s'affichait en pleine mer).
+                if (offset.magnitude <= island.radius + 1.6f) return island;
             }
             return null;
         }

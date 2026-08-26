@@ -142,15 +142,16 @@ namespace Devside.FishingIdle.Game
         }
 
         /// <summary>
-        /// Bouton « jeu mobile » : liseré sombre + face colorée arrondie + texte gras à
-        /// contour, et icône optionnelle au-dessus du label (pour les barres d'onglets).
+        /// Bouton « candy » (référence : jeux mobiles modernes) : face colorée vive sur
+        /// une ombre dure de la même teinte assombrie qui dépasse en bas — l'effet
+        /// « pressable » 3D — texte gras blanc à contour, icône optionnelle.
         /// </summary>
         public static (Button button, Text label, RectTransform rect) CreateFancyButton(
             string name, Transform parent, Color fill, int fontSize, Sprite icon = null)
         {
-            var border = CreateCard(name, parent, new Color(0.03f, 0.08f, 0.13f, 0.92f));
+            var border = CreateCard(name, parent, new Color(fill.r * 0.55f, fill.g * 0.55f, fill.b * 0.55f, fill.a));
             var inner = CreateCard("Inner", border.transform, fill, shadow: false);
-            Stretch(inner.rectTransform, 5, 5, 5, 5);
+            Stretch(inner.rectTransform, 0, 0, 0, 8);
 
             var button = border.gameObject.AddComponent<Button>();
             button.targetGraphic = inner;

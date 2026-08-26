@@ -23,18 +23,20 @@ namespace Devside.FishingIdle.Game
         const float PrestigeBandHeight = 92f;
         const float PanelHeight = 880f;
 
-        static readonly Color CardBg = new Color(0.07f, 0.16f, 0.24f, 0.97f);
-        static readonly Color PanelBg = new Color(0.06f, 0.13f, 0.2f, 0.98f);
-        static readonly Color RowBg = new Color(1f, 1f, 1f, 0.08f);
-        static readonly Color MoneyGreen = new Color(0.22f, 0.58f, 0.28f);
-        static readonly Color BuyGreen = new Color(0.24f, 0.62f, 0.3f);
-        static readonly Color CastTeal = new Color(0.1f, 0.58f, 0.62f);
-        static readonly Color TabBlue = new Color(0.12f, 0.3f, 0.45f);
-        static readonly Color SellGray = new Color(0.32f, 0.4f, 0.5f);
-        static readonly Color PrestigeOrange = new Color(0.9f, 0.55f, 0.14f);
-        static readonly Color TextMain = Color.white;
-        static readonly Color TextDim = new Color(1f, 1f, 1f, 0.72f);
-        static readonly Color HoldBarColor = new Color(0.35f, 0.75f, 0.95f);
+        // Palette « candy » (référence playtest : UI mobiles modernes) — cartes
+        // claires, texte encre foncée, boutons saturés à ombre dure.
+        static readonly Color CardBg = new Color(1f, 1f, 1f, 0.96f);
+        static readonly Color PanelBg = new Color(0.96f, 0.94f, 0.89f, 0.98f);
+        static readonly Color RowBg = new Color(1f, 1f, 1f, 0.92f);
+        static readonly Color MoneyGreen = new Color(0.33f, 0.72f, 0.32f);
+        static readonly Color BuyOrange = new Color(0.96f, 0.62f, 0.16f);
+        static readonly Color CastGreen = new Color(0.35f, 0.76f, 0.31f);
+        static readonly Color TabBlue = new Color(0.25f, 0.6f, 0.86f);
+        static readonly Color SellGreen = new Color(0.33f, 0.72f, 0.32f);
+        static readonly Color PrestigeOrange = new Color(0.95f, 0.5f, 0.12f);
+        static readonly Color TextMain = new Color(0.13f, 0.26f, 0.39f);
+        static readonly Color TextDim = new Color(0.13f, 0.26f, 0.39f, 0.62f);
+        static readonly Color HoldBarColor = new Color(0.3f, 0.7f, 0.95f);
 
         class ShopRow
         {
@@ -52,7 +54,6 @@ namespace Devside.FishingIdle.Game
         Text _offlineText;
         RectTransform _holdFill;
         Button _sellButton;
-        Text _sellLabel;
 
         /// <summary>Île marchande où le bateau est à quai (null en mer) — bonus au comptoir.</summary>
         WorldMap.Island _merchantHere;
@@ -93,7 +94,10 @@ namespace Devside.FishingIdle.Game
         }
 
         readonly List<DexRow> _dexRows = new List<DexRow>();
-        Text _statsText;
+        Text _statLifetime;
+        Text _statDiscovered;
+        Text _statPrestige;
+        Text _statZone;
 
         void Awake()
         {
@@ -144,6 +148,8 @@ namespace Devside.FishingIdle.Game
 
             if (_catchBannerCard.activeSelf && Time.time > _catchBannerUntil)
                 _catchBannerCard.SetActive(false);
+            if (_offlineText.gameObject.activeSelf && Time.time > _offlineTextUntil)
+                _offlineText.gameObject.SetActive(false);
 
             if (_mapPanel.activeSelf) RefreshMap(config, state);
             if (_profilePanel.activeSelf) RefreshProfile(config, state);
@@ -180,12 +186,8 @@ namespace Devside.FishingIdle.Game
             if (merchant == _merchantHere) return;
 
             _merchantHere = merchant;
-            int percent = (int)System.Math.Round((config.merchantSellBonus - 1) * 100);
             if (merchant != null)
-                ShowBanner(string.Format(GameTheme.MerchantWelcomeFormat, GameTheme.Island(merchant.id), percent));
-            _sellLabel.text = merchant != null
-                ? string.Format(GameTheme.MerchantSellFormat, percent)
-                : GameTheme.SellAllAction;
+                ShowBanner(string.Format(GameTheme.MerchantWelcomeFormat, GameTheme.Island(merchant.id)));
         }
 
         double CurrentSellMultiplier(BalanceConfig config)
@@ -394,7 +396,7 @@ namespace Devside.FishingIdle.Game
                 iconRt.sizeDelta = new Vector2(68f, 68f);
             }
 
-            _moneyText = UiKit.CreateText("Money", moneyPill.transform, 60, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _moneyText = UiKit.CreateText("Money", moneyPill.transform, 60, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
             UiKit.AddOutline(_moneyText, 2f);
             UiKit.Stretch(_moneyText.rectTransform, 90, 24, 0, 0);
 
@@ -418,7 +420,7 @@ namespace Devside.FishingIdle.Game
                 icon.rectTransform.sizeDelta = new Vector2(52f, 52f);
             }
 
-            var holdBar = UiKit.CreateCard("HoldBar", header.transform, new Color(0f, 0f, 0f, 0.35f), shadow: false);
+            var holdBar = UiKit.CreateCard("HoldBar", header.transform, new Color(0f, 0f, 0f, 0.12f), shadow: false);
             var holdBarRt = holdBar.rectTransform;
             holdBarRt.anchorMin = new Vector2(0f, 1f);
             holdBarRt.anchorMax = new Vector2(0.62f, 1f);
@@ -438,7 +440,7 @@ namespace Devside.FishingIdle.Game
             holdTextRt.offsetMin = new Vector2(106f, -296f);
             holdTextRt.offsetMax = new Vector2(-6f, -254f);
 
-            var (sellButton, sellLabel, sellRect) = UiKit.CreateFancyButton("SellAll", header.transform, SellGray, 30);
+            var (sellButton, sellLabel, sellRect) = UiKit.CreateFancyButton("SellAll", header.transform, SellGreen, 30);
             sellLabel.text = GameTheme.SellAllAction;
             sellRect.anchorMin = new Vector2(0.64f, 1f);
             sellRect.anchorMax = new Vector2(1f, 1f);
@@ -450,7 +452,6 @@ namespace Devside.FishingIdle.Game
                 Economy.SellAll(boot.Config, boot.State, CurrentSellMultiplier(boot.Config));
             });
             _sellButton = sellButton;
-            _sellLabel = sellLabel;
 
             _offlineText = UiKit.CreateText("Offline", canvas, 30, new Color(1f, 0.85f, 0.4f), TextAnchor.MiddleCenter);
             UiKit.AddOutline(_offlineText, 1.2f);
@@ -462,7 +463,7 @@ namespace Devside.FishingIdle.Game
         {
             var card = UiKit.CreateCard("CatchBanner", canvas, new Color(0.04f, 0.1f, 0.16f, 0.9f), shadow: false);
             UiKit.AnchorTop(card.rectTransform, HeaderHeight + 78, 62, 110);
-            _catchBanner = UiKit.CreateText("Text", card.transform, 36, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _catchBanner = UiKit.CreateText("Text", card.transform, 36, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
             UiKit.AddOutline(_catchBanner, 1.4f);
             UiKit.Stretch(_catchBanner.rectTransform, 16, 16, 0, 0);
             _catchBannerCard = card.gameObject;
@@ -501,7 +502,7 @@ namespace Devside.FishingIdle.Game
 
         static void AddSectionHeader(Transform parent, string title)
         {
-            var text = UiKit.CreateText("Section", parent, 30, new Color(0.45f, 0.8f, 0.85f), TextAnchor.MiddleCenter, FontStyle.Bold);
+            var text = UiKit.CreateText("Section", parent, 30, new Color(0.05f, 0.45f, 0.52f), TextAnchor.MiddleCenter, FontStyle.Bold);
             text.text = title;
             text.gameObject.AddComponent<LayoutElement>().preferredHeight = 52;
         }
@@ -570,7 +571,7 @@ namespace Devside.FishingIdle.Game
                 pill.raycastTarget = false;
                 pill.rectTransform.sizeDelta = new Vector2(232f, 74f);
                 pill.rectTransform.anchoredPosition = MapPoint(island.position) + new Vector2(0f, -64f);
-                var label = UiKit.CreateText("Name", pill.transform, 24, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
+                var label = UiKit.CreateText("Name", pill.transform, 24, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
                 UiKit.Stretch(label.rectTransform, 8, 8, 4, 4);
                 _mapIslands.Add(new MapIslandMarker { island = island, label = label });
             }
@@ -617,7 +618,7 @@ namespace Devside.FishingIdle.Game
                 marker.label.text = reachable
                     ? name
                     : $"{name}\n{string.Format(GameTheme.ZoneLockedFormat, marker.island.zone)}";
-                marker.label.color = reachable ? TextMain : new Color(1f, 1f, 1f, 0.55f);
+                marker.label.color = reachable ? Color.white : new Color(1f, 1f, 1f, 0.55f);
             }
         }
 
@@ -627,8 +628,10 @@ namespace Devside.FishingIdle.Game
             _profilePanel = BuildPanel(canvas, GameTheme.ProfileTitle, out var content);
 
             AddSectionHeader(content, GameTheme.StatsSection);
-            _statsText = UiKit.CreateText("Stats", content, 32, TextDim, TextAnchor.MiddleLeft);
-            _statsText.gameObject.AddComponent<LayoutElement>().preferredHeight = 190;
+            _statLifetime = AddStatRow(content, GameTheme.StatLifetime);
+            _statDiscovered = AddStatRow(content, GameTheme.StatDiscovered);
+            _statPrestige = AddStatRow(content, GameTheme.StatPrestige);
+            _statZone = AddStatRow(content, GameTheme.StatZone);
 
             AddSectionHeader(content, GameTheme.CollectionSection);
             foreach (var species in boot.Config.species)
@@ -636,7 +639,6 @@ namespace Devside.FishingIdle.Game
                 var card = UiKit.CreateCard("Dex", content, RowBg, shadow: false);
                 card.gameObject.AddComponent<LayoutElement>().preferredHeight = 84;
                 var name = UiKit.CreateText("Name", card.transform, 34, TextMain, TextAnchor.MiddleLeft, FontStyle.Bold);
-                UiKit.AddOutline(name, 1.1f);
                 UiKit.Stretch(name.rectTransform, 30, 260, 0, 0);
                 var bonus = UiKit.CreateText("Bonus", card.transform, 30, TextDim, TextAnchor.MiddleRight);
                 UiKit.Stretch(bonus.rectTransform, 30, 30, 0, 0);
@@ -644,13 +646,25 @@ namespace Devside.FishingIdle.Game
             }
         }
 
+        /// <summary>Ligne de statistique : libellé à gauche, valeur à droite — jamais tronquée.</summary>
+        Text AddStatRow(Transform parent, string title)
+        {
+            var card = UiKit.CreateCard("Stat", parent, RowBg, shadow: false);
+            card.gameObject.AddComponent<LayoutElement>().preferredHeight = 76;
+            var label = UiKit.CreateText("Label", card.transform, 30, TextMain, TextAnchor.MiddleLeft, FontStyle.Bold);
+            label.text = title;
+            UiKit.Stretch(label.rectTransform, 30, 280, 0, 0);
+            var value = UiKit.CreateText("Value", card.transform, 30, TextDim, TextAnchor.MiddleRight);
+            UiKit.Stretch(value.rectTransform, 30, 30, 0, 0);
+            return value;
+        }
+
         void RefreshProfile(BalanceConfig config, GameState state)
         {
-            _statsText.text =
-                $"{GameTheme.StatLifetime} : {Numbers.Format(state.lifetimeMoney)} {GameTheme.MoneySuffix}\n" +
-                $"{GameTheme.StatDiscovered} : {state.discoveredSpecies.Count}/{config.species.Count}\n" +
-                $"{GameTheme.StatPrestige} : {state.prestigePoints}\n" +
-                $"{GameTheme.StatZone} : {Catching.DepthLevel(config, state)}";
+            _statLifetime.text = $"{Numbers.Format(state.lifetimeMoney)} {GameTheme.MoneySuffix}";
+            _statDiscovered.text = $"{state.discoveredSpecies.Count}/{config.species.Count}";
+            _statPrestige.text = state.prestigePoints.ToString();
+            _statZone.text = Catching.DepthLevel(config, state).ToString();
 
             foreach (var row in _dexRows)
             {
@@ -683,20 +697,20 @@ namespace Devside.FishingIdle.Game
 
             AddPanelTitle(panel.transform, title);
 
-            content = UiKit.CreateScrollList("List", panel.transform, new Color(0f, 0f, 0f, 0.18f));
+            content = UiKit.CreateScrollList("List", panel.transform, new Color(0f, 0f, 0f, 0.06f));
             UiKit.AnchorVerticalSpan((RectTransform)content.parent, 90, 16, 14);
 
             panel.gameObject.SetActive(false);
             return panel.gameObject;
         }
 
-        /// <summary>Bandeau de titre commun à tous les panneaux (design unifié).</summary>
+        /// <summary>Bandeau de titre commun à tous les panneaux : pilule bleue, texte blanc.</summary>
         static void AddPanelTitle(Transform panel, string title)
         {
-            var band = UiKit.CreateCard("TitleBand", panel, new Color(0f, 0f, 0f, 0.28f), shadow: false);
-            UiKit.AnchorTop(band.rectTransform, 10, 68, 12);
-            var titleText = UiKit.CreateText("Title", band.transform, 38, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UiKit.AddOutline(titleText, 1.6f);
+            var band = UiKit.CreateCard("TitleBand", panel, TabBlue, shadow: false);
+            UiKit.AnchorTop(band.rectTransform, 10, 68, 220);
+            var titleText = UiKit.CreateText("Title", band.transform, 38, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UiKit.AddOutline(titleText, 1.4f);
             titleText.text = title;
             UiKit.Stretch(titleText.rectTransform);
         }
@@ -726,7 +740,7 @@ namespace Devside.FishingIdle.Game
             AddTab(bar.transform, "BoatTab", GameTheme.BoatTab, UiKit.Icon("crew"), 0.010f, 0.196f, () => TogglePanel(_boatPanel));
             AddTab(bar.transform, "MapTab", GameTheme.MapTab, null, 0.206f, 0.392f, () => TogglePanel(_mapPanel));
 
-            var (castButton, castLabel, castRect) = UiKit.CreateFancyButton("Cast", bar.transform, CastTeal, 32, UiKit.Icon("fish"));
+            var (castButton, castLabel, castRect) = UiKit.CreateFancyButton("Cast", bar.transform, CastGreen, 32, UiKit.Icon("fish"));
             castLabel.text = GameTheme.CastAction;
             SetBarSlot(castRect, 0.402f, 0.598f);
             castButton.onClick.AddListener(() => Cast(new Vector2(Screen.width * 0.62f, Screen.height * 0.45f)));
@@ -751,6 +765,8 @@ namespace Devside.FishingIdle.Game
             rt.offsetMax = new Vector2(0f, -18f);
         }
 
+        float _offlineTextUntil;
+
         void ShowOfflineSummary()
         {
             var offline = GameBootstrap.Instance.LastOffline;
@@ -759,6 +775,7 @@ namespace Devside.FishingIdle.Game
             _offlineText.text =
                 $"{GameTheme.OfflinePrefix} : +{Numbers.Format(offline.stockGained)} {GameTheme.FishUnit}{holdNote}";
             _offlineText.gameObject.SetActive(true);
+            _offlineTextUntil = Time.time + 8f; // il restait affiché pour toujours (retour playtest)
         }
 
         ShopRow CreateShopRow(Transform parent, System.Action onBuy, bool alternate = false, bool withSubLabel = false)
@@ -768,7 +785,6 @@ namespace Devside.FishingIdle.Game
             card.gameObject.AddComponent<LayoutElement>().preferredHeight = 122;
 
             var label = UiKit.CreateText("Name", card.transform, 36, TextMain, TextAnchor.MiddleLeft, FontStyle.Bold);
-            UiKit.AddOutline(label, 1.2f);
             var labelRt = label.rectTransform;
             labelRt.anchorMin = new Vector2(0f, withSubLabel ? 0.42f : 0f);
             labelRt.anchorMax = Vector2.one;
@@ -786,7 +802,7 @@ namespace Devside.FishingIdle.Game
                 subRt.offsetMax = new Vector2(-330f, 0f);
             }
 
-            var (button, buttonLabel, buttonRect) = UiKit.CreateFancyButton("Buy", card.transform, BuyGreen, 34);
+            var (button, buttonLabel, buttonRect) = UiKit.CreateFancyButton("Buy", card.transform, BuyOrange, 34);
             buttonRect.anchorMin = new Vector2(1f, 0.5f);
             buttonRect.anchorMax = new Vector2(1f, 0.5f);
             buttonRect.pivot = new Vector2(1f, 0.5f);

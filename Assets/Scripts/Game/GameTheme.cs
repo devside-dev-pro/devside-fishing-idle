@@ -26,7 +26,7 @@ namespace Devside.FishingIdle.Game
             ["market_deals"] = "Contacts au marché",
             ["auto_sell"] = "Comptoir de vente auto",
             ["cargo_hold"] = "Extension de cale",
-            ["boat_hull"] = "Coque renforcée (profondeur +1)",
+            ["boat_hull"] = "Coque renforcée",
         };
 
         static readonly Dictionary<string, string> SpeciesNames = new Dictionary<string, string>
@@ -67,8 +67,7 @@ namespace Devside.FishingIdle.Game
         public const string ShopTab = "Boutique";
 
         public const string MapTitle = "L'archipel";
-        public const string MerchantWelcomeFormat = "{0} — le marchand paie +{1} % au comptoir !";
-        public const string MerchantSellFormat = "Comptoir  +{0} %";
+        public const string MerchantWelcomeFormat = "{0} — vendez votre pêche au comptoir !";
         public const string ZoneLockedFormat = "Coque niv. {0}";
         public const string ProfileTitle = "Capitaine";
         public const string CollectionSection = "— Poissodex —";
