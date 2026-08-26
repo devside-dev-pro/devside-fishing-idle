@@ -46,9 +46,14 @@ en 3/4 isométrique sur l'eau, et l'état du jeu incarné physiquement :
 L'UI devient une surcouche : bandeau de stats en haut, barre d'onglets en bas
 (Équipage / Pêcher / Améliorer) ouvrant des panneaux, bandeau PRESTIGE quand disponible.
 
-Art v1 : primitives colorées flat générées par code (`BoatView`) — placeholder assumé.
-Le passage à de vrais assets (pack low-poly Asset Store type Synty, ou modélisation)
-remplacera la construction des blocs sans toucher ni à la logique ni au mapping ci-dessus.
+Art v1 : packs low-poly **Quaternius** (bateaux pirates, personnages nommés, props,
+poissons) et **Kenney** (props d'appoint), tous CC0 — voir CREDITS.md. `BoatView` charge
+les modèles via `ArtLibrary` (Resources), convertit les matériaux vers URP, mesure et
+normalise les échelles, et résout la hauteur du pont par raycast : changer de pack ne
+touche ni à la logique ni au mapping ci-dessus. Chaque modèle garde un fallback primitive.
+L'eau est un shader stylisé maison (`Devside/StylizedWater`) : dégradé de profondeur,
+vaguelettes, écume autour de la coque. Étape suivante (plus tard) : animations
+squelettiques des personnages (les modèles sont riggés) et upgrade éventuel vers Synty.
 
 ## Le principe directeur : le métier du joueur change
 
