@@ -120,5 +120,18 @@ namespace Devside.FishingIdle.Core.Tests
             Assert.That(gained, Is.EqualTo(2 * 1 + 3 * 5 + 1 * 20).Within(1e-9));
             Assert.That(state.rawFish + state.cutFish + state.fillet, Is.EqualTo(0).Within(1e-9));
         }
+
+        [Test]
+        public void SellAll_AppliesHostPriceMultiplier()
+        {
+            var config = TestConfigs.Simple();
+            var state = new GameState { rawFish = 4 };
+
+            // Bonus contextuel de la couche hôte (comptoir du marchand : bateau à quai).
+            double gained = Economy.SellAll(config, state, priceMultiplier: 1.25);
+
+            Assert.That(gained, Is.EqualTo(4 * 1 * 1.25).Within(1e-9));
+            Assert.That(state.money, Is.EqualTo(5).Within(1e-9));
+        }
     }
 }

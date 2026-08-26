@@ -82,6 +82,13 @@ namespace Devside.FishingIdle.Core
         /// <summary>Bonus de production par point de prestige (0.04 = +4 %).</summary>
         public double prestigeBonusPerPoint = 0.04;
 
+        /// <summary>
+        /// Multiplicateur de prix au comptoir du marchand (1.25 = +25 %). Appliqué par
+        /// la couche hôte quand le bateau est à quai — récompense le trajet, jamais la
+        /// vente automatique.
+        /// </summary>
+        public double merchantSellBonus = 1.25;
+
         public Dictionary<ResourceId, double> sellPrices = new Dictionary<ResourceId, double>();
         public List<ProducerDef> producers = new List<ProducerDef>();
         public List<UpgradeDef> upgrades = new List<UpgradeDef>();

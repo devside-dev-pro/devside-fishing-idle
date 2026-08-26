@@ -64,26 +64,32 @@ namespace Devside.FishingIdle.Core
             return true;
         }
 
-        /// <summary>Vend jusqu'à <paramref name="amount"/> unités ; renvoie l'argent encaissé.</summary>
-        public static double Sell(BalanceConfig config, GameState state, ResourceId resource, double amount)
+        /// <summary>
+        /// Vend jusqu'à <paramref name="amount"/> unités ; renvoie l'argent encaissé.
+        /// <paramref name="priceMultiplier"/> est un bonus contextuel injecté par la
+        /// couche hôte (ex. comptoir du marchand quand le bateau est à quai) — 1 = prix
+        /// normal ; la vente automatique ne l'utilise jamais.
+        /// </summary>
+        public static double Sell(BalanceConfig config, GameState state, ResourceId resource, double amount,
+            double priceMultiplier = 1)
         {
             double stock = state.GetResource(resource);
             double sold = Math.Min(Math.Max(amount, 0), stock);
             if (sold <= 0) return 0;
 
-            double gained = sold * config.SellPrice(resource) * Multipliers.SellPrice(config, state);
+            double gained = sold * config.SellPrice(resource) * Multipliers.SellPrice(config, state) * priceMultiplier;
             state.AddResource(resource, -sold);
             state.AddResource(ResourceId.Money, gained);
             return gained;
         }
 
         /// <summary>Vend tout le stock de poisson (brut, découpé, filets) ; renvoie l'argent encaissé.</summary>
-        public static double SellAll(BalanceConfig config, GameState state)
+        public static double SellAll(BalanceConfig config, GameState state, double priceMultiplier = 1)
         {
             double gained = 0;
-            gained += Sell(config, state, ResourceId.RawFish, state.rawFish);
-            gained += Sell(config, state, ResourceId.CutFish, state.cutFish);
-            gained += Sell(config, state, ResourceId.Fillet, state.fillet);
+            gained += Sell(config, state, ResourceId.RawFish, state.rawFish, priceMultiplier);
+            gained += Sell(config, state, ResourceId.CutFish, state.cutFish, priceMultiplier);
+            gained += Sell(config, state, ResourceId.Fillet, state.fillet, priceMultiplier);
             return gained;
         }
     }

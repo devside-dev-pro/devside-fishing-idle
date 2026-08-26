@@ -67,6 +67,8 @@ namespace Devside.FishingIdle.Game
         public const string ShopTab = "Boutique";
 
         public const string MapTitle = "L'archipel";
+        public const string MerchantWelcomeFormat = "{0} — le marchand paie +{1} % au comptoir !";
+        public const string MerchantSellFormat = "Comptoir  +{0} %";
         public const string ZoneLockedFormat = "Coque niv. {0}";
         public const string ProfileTitle = "Capitaine";
         public const string CollectionSection = "— Poissodex —";
