@@ -56,13 +56,39 @@ namespace Devside.FishingIdle.Game
         Text _catchBanner;
         float _catchBannerUntil;
 
-        GameObject _producersPanel;
-        GameObject _upgradesPanel;
+        GameObject _boatPanel;
+        GameObject _mapPanel;
+        GameObject _profilePanel;
+        GameObject _shopPanel;
         Button _prestigeButton;
         Text _prestigeLabel;
 
         readonly Dictionary<string, ShopRow> _producerRows = new Dictionary<string, ShopRow>();
         readonly Dictionary<string, ShopRow> _upgradeRows = new Dictionary<string, ShopRow>();
+
+        // Carte de l'archipel.
+        class MapIslandMarker
+        {
+            public WorldMap.Island island;
+            public Text label;
+        }
+
+        const float MapWorldRange = 200f;
+        readonly List<MapIslandMarker> _mapIslands = new List<MapIslandMarker>();
+        RectTransform _boatMarker;
+        float _mapScale;
+
+        // Profil (Poissodex + statistiques).
+        class DexRow
+        {
+            public string id;
+            public SpeciesDef def;
+            public Text name;
+            public Text bonus;
+        }
+
+        readonly List<DexRow> _dexRows = new List<DexRow>();
+        Text _statsText;
 
         void Awake()
         {
@@ -111,6 +137,9 @@ namespace Devside.FishingIdle.Game
             if (_catchBannerCard.activeSelf && Time.time > _catchBannerUntil)
                 _catchBannerCard.SetActive(false);
 
+            if (_mapPanel.activeSelf) RefreshMap(config, state);
+            if (_profilePanel.activeSelf) RefreshProfile(config, state);
+
             if (PointerDownOnScene())
                 Cast(PointerScreenPosition());
         }
@@ -140,10 +169,19 @@ namespace Devside.FishingIdle.Game
             _catchBannerUntil = Time.time + 2.2f;
         }
 
-        void TogglePanel(GameObject panel, GameObject other)
+        void TogglePanel(GameObject panel)
         {
-            panel.SetActive(!panel.activeSelf);
-            other.SetActive(false);
+            bool opening = !panel.activeSelf;
+            CloseAllPanels();
+            panel.SetActive(opening);
+        }
+
+        void CloseAllPanels()
+        {
+            _boatPanel.SetActive(false);
+            _mapPanel.SetActive(false);
+            _profilePanel.SetActive(false);
+            _shopPanel.SetActive(false);
         }
 
         // ---------- Saisie ----------
@@ -336,19 +374,176 @@ namespace Devside.FishingIdle.Game
         {
             var boot = GameBootstrap.Instance;
 
-            _producersPanel = BuildPanel(canvas, GameTheme.ProducersSection, out var producersContent);
+            // Onglet Bateau : producteurs et améliorations réunis (l'ancien double panneau).
+            _boatPanel = BuildPanel(canvas, GameTheme.BoatTab, out var boatContent);
+            AddSectionHeader(boatContent, GameTheme.ProducersSection);
             foreach (var def in boot.Config.producers)
             {
                 string id = def.id;
-                _producerRows[id] = CreateShopRow(producersContent, () => Economy.TryBuyProducer(boot.Config, boot.State, id));
+                _producerRows[id] = CreateShopRow(boatContent, () => Economy.TryBuyProducer(boot.Config, boot.State, id));
             }
-
-            _upgradesPanel = BuildPanel(canvas, GameTheme.UpgradesSection, out var upgradesContent);
+            AddSectionHeader(boatContent, GameTheme.UpgradesSection);
             foreach (var def in boot.Config.upgrades)
             {
                 string id = def.id;
-                _upgradeRows[id] = CreateShopRow(upgradesContent, () => Economy.TryBuyUpgrade(boot.Config, boot.State, id));
+                _upgradeRows[id] = CreateShopRow(boatContent, () => Economy.TryBuyUpgrade(boot.Config, boot.State, id));
             }
+
+            BuildMapPanel(canvas);
+            BuildProfilePanel(canvas);
+            BuildShopPanel(canvas);
+        }
+
+        static void AddSectionHeader(Transform parent, string title)
+        {
+            var text = UiKit.CreateText("Section", parent, 34, TextDim, TextAnchor.MiddleCenter, FontStyle.Bold);
+            text.text = title;
+            text.gameObject.AddComponent<LayoutElement>().preferredHeight = 56;
+        }
+
+        /// <summary>
+        /// La carte : un disque par zone (du large sombre vers les eaux claires du
+        /// départ), les îles nommées (verrouillées tant que la coque ne suit pas),
+        /// et le bateau en direct. Monde → carte : haut = +x, droite = -z.
+        /// </summary>
+        void BuildMapPanel(Transform canvas)
+        {
+            var panel = UiKit.CreateCard("MapPanel", canvas, PanelBg);
+            UiKit.AnchorBottom(panel.rectTransform, BottomBarHeight + PrestigeBandHeight + 6, PanelHeight, 16);
+
+            var titleText = UiKit.CreateText("Title", panel.transform, 40, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UiKit.AddOutline(titleText, 1.6f);
+            titleText.text = GameTheme.MapTitle;
+            UiKit.AnchorTop(titleText.rectTransform, 14, 58, 20);
+
+            var sea = UiKit.CreateCard("Sea", panel.transform, new Color(0.03f, 0.09f, 0.17f), shadow: false);
+            UiKit.AnchorVerticalSpan(sea.rectTransform, 84, 16, 14);
+
+            _mapScale = 336f / MapWorldRange;
+
+            var zoneColors = new[]
+            {
+                new Color(0.16f, 0.55f, 0.62f),
+                new Color(0.1f, 0.38f, 0.5f),
+                new Color(0.06f, 0.24f, 0.4f),
+            };
+            var boundaries = WorldMap.ZoneBoundaries;
+            for (int i = boundaries.Count - 1; i >= 0; i--)
+            {
+                var circle = UiKit.CreateRect("Zone" + i, sea.transform).gameObject.AddComponent<Image>();
+                circle.sprite = UiKit.Circle;
+                circle.color = zoneColors[Mathf.Min(i, zoneColors.Length - 1)];
+                circle.raycastTarget = false;
+                circle.rectTransform.sizeDelta = Vector2.one * (boundaries[i] * _mapScale * 2f);
+            }
+
+            foreach (var island in WorldMap.AllIslands)
+            {
+                var dot = UiKit.CreateRect("Island", sea.transform).gameObject.AddComponent<Image>();
+                dot.sprite = UiKit.Circle;
+                dot.color = new Color(0.83f, 0.72f, 0.5f);
+                dot.raycastTarget = false;
+                dot.rectTransform.sizeDelta = new Vector2(26f, 26f);
+                dot.rectTransform.anchoredPosition = MapPoint(island.position);
+
+                var label = UiKit.CreateText("Name", sea.transform, 26, TextMain, TextAnchor.UpperCenter, FontStyle.Bold);
+                UiKit.AddOutline(label, 1.2f);
+                label.rectTransform.sizeDelta = new Vector2(320f, 76f);
+                label.rectTransform.anchoredPosition = MapPoint(island.position) + new Vector2(0f, -24f);
+                _mapIslands.Add(new MapIslandMarker { island = island, label = label });
+            }
+
+            var markerBorder = UiKit.CreateRect("Boat", sea.transform).gameObject.AddComponent<Image>();
+            markerBorder.sprite = UiKit.Circle;
+            markerBorder.color = new Color(0.03f, 0.08f, 0.13f);
+            markerBorder.raycastTarget = false;
+            markerBorder.rectTransform.sizeDelta = new Vector2(30f, 30f);
+            var markerFill = UiKit.CreateRect("Fill", markerBorder.transform).gameObject.AddComponent<Image>();
+            markerFill.sprite = UiKit.Circle;
+            markerFill.color = Color.white;
+            markerFill.raycastTarget = false;
+            markerFill.rectTransform.sizeDelta = new Vector2(20f, 20f);
+            _boatMarker = markerBorder.rectTransform;
+
+            panel.gameObject.SetActive(false);
+            _mapPanel = panel.gameObject;
+        }
+
+        Vector2 MapPoint(Vector3 world) => new Vector2(-world.z * _mapScale, world.x * _mapScale);
+
+        void RefreshMap(BalanceConfig config, GameState state)
+        {
+            if (BoatController.Instance != null)
+                _boatMarker.anchoredPosition = MapPoint(BoatController.Instance.Root.position);
+
+            int maxZone = Catching.MaxNavigableZone(config, state);
+            foreach (var marker in _mapIslands)
+            {
+                bool reachable = marker.island.zone <= maxZone;
+                string name = GameTheme.Island(marker.island.id);
+                marker.label.text = reachable
+                    ? name
+                    : $"{name}\n{string.Format(GameTheme.ZoneLockedFormat, marker.island.zone)}";
+                marker.label.color = reachable ? TextMain : new Color(1f, 1f, 1f, 0.55f);
+            }
+        }
+
+        void BuildProfilePanel(Transform canvas)
+        {
+            var boot = GameBootstrap.Instance;
+            _profilePanel = BuildPanel(canvas, GameTheme.ProfileTitle, out var content);
+
+            AddSectionHeader(content, GameTheme.StatsSection);
+            _statsText = UiKit.CreateText("Stats", content, 32, TextDim, TextAnchor.MiddleLeft);
+            _statsText.gameObject.AddComponent<LayoutElement>().preferredHeight = 190;
+
+            AddSectionHeader(content, GameTheme.CollectionSection);
+            foreach (var species in boot.Config.species)
+            {
+                var card = UiKit.CreateCard("Dex", content, RowBg, shadow: false);
+                card.gameObject.AddComponent<LayoutElement>().preferredHeight = 84;
+                var name = UiKit.CreateText("Name", card.transform, 34, TextMain, TextAnchor.MiddleLeft, FontStyle.Bold);
+                UiKit.AddOutline(name, 1.1f);
+                UiKit.Stretch(name.rectTransform, 30, 260, 0, 0);
+                var bonus = UiKit.CreateText("Bonus", card.transform, 30, TextDim, TextAnchor.MiddleRight);
+                UiKit.Stretch(bonus.rectTransform, 30, 30, 0, 0);
+                _dexRows.Add(new DexRow { id = species.id, def = species, name = name, bonus = bonus });
+            }
+        }
+
+        void RefreshProfile(BalanceConfig config, GameState state)
+        {
+            _statsText.text =
+                $"{GameTheme.StatLifetime} : {Numbers.Format(state.lifetimeMoney)} {GameTheme.MoneySuffix}\n" +
+                $"{GameTheme.StatDiscovered} : {state.discoveredSpecies.Count}/{config.species.Count}\n" +
+                $"{GameTheme.StatPrestige} : {state.prestigePoints}\n" +
+                $"{GameTheme.StatZone} : {Catching.DepthLevel(config, state)}";
+
+            foreach (var row in _dexRows)
+            {
+                bool known = state.discoveredSpecies.Contains(row.id);
+                row.name.text = known ? GameTheme.Species(row.id) : GameTheme.UndiscoveredSpecies;
+                row.name.color = known ? TextMain : TextDim;
+                row.bonus.text = known ? $"+{(row.def.discoveryBonus - 1) * 100:0.#} %" : "";
+            }
+        }
+
+        void BuildShopPanel(Transform canvas)
+        {
+            var panel = UiKit.CreateCard("ShopPanel", canvas, PanelBg);
+            UiKit.AnchorBottom(panel.rectTransform, BottomBarHeight + PrestigeBandHeight + 6, PanelHeight, 16);
+
+            var titleText = UiKit.CreateText("Title", panel.transform, 40, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UiKit.AddOutline(titleText, 1.6f);
+            titleText.text = GameTheme.ShopTab;
+            UiKit.AnchorTop(titleText.rectTransform, 14, 58, 20);
+
+            var message = UiKit.CreateText("Soon", panel.transform, 34, TextDim, TextAnchor.MiddleCenter);
+            message.text = GameTheme.ShopComingSoon;
+            UiKit.AnchorVerticalSpan(message.rectTransform, 84, 16, 40);
+
+            panel.gameObject.SetActive(false);
+            _shopPanel = panel.gameObject;
         }
 
         GameObject BuildPanel(Transform canvas, string title, out RectTransform content)
@@ -377,8 +572,7 @@ namespace Devside.FishingIdle.Game
             {
                 var boot = GameBootstrap.Instance;
                 Prestige.Execute(boot.Config, boot.State);
-                _producersPanel.SetActive(false);
-                _upgradesPanel.SetActive(false);
+                CloseAllPanels();
             });
             _prestigeButton = button;
             _prestigeLabel = label;
@@ -390,20 +584,25 @@ namespace Devside.FishingIdle.Game
             var bar = UiKit.CreateCard("BottomBar", canvas, CardBg);
             UiKit.AnchorBottom(bar.rectTransform, 12, BottomBarHeight, 14);
 
-            var (crewTab, crewLabel, crewRect) = UiKit.CreateFancyButton("CrewTab", bar.transform, TabBlue, 30, UiKit.Icon("crew"));
-            crewLabel.text = GameTheme.CrewTab;
-            SetBarSlot(crewRect, 0.02f, 0.32f);
-            crewTab.onClick.AddListener(() => TogglePanel(_producersPanel, _upgradesPanel));
+            // 5 onglets : Bateau · Carte · PÊCHER · Profil · Boutique.
+            AddTab(bar.transform, "BoatTab", GameTheme.BoatTab, UiKit.Icon("crew"), 0.010f, 0.196f, () => TogglePanel(_boatPanel));
+            AddTab(bar.transform, "MapTab", GameTheme.MapTab, null, 0.206f, 0.392f, () => TogglePanel(_mapPanel));
 
-            var (castButton, castLabel, castRect) = UiKit.CreateFancyButton("Cast", bar.transform, CastTeal, 38, UiKit.Icon("fish"));
+            var (castButton, castLabel, castRect) = UiKit.CreateFancyButton("Cast", bar.transform, CastTeal, 32, UiKit.Icon("fish"));
             castLabel.text = GameTheme.CastAction;
-            SetBarSlot(castRect, 0.34f, 0.66f);
+            SetBarSlot(castRect, 0.402f, 0.598f);
             castButton.onClick.AddListener(() => Cast(new Vector2(Screen.width * 0.62f, Screen.height * 0.45f)));
 
-            var (upgradesTab, upgradesLabel, upgradesRect) = UiKit.CreateFancyButton("UpgradesTab", bar.transform, TabBlue, 30, UiKit.Icon("upgrade"));
-            upgradesLabel.text = GameTheme.UpgradesTab;
-            SetBarSlot(upgradesRect, 0.68f, 0.98f);
-            upgradesTab.onClick.AddListener(() => TogglePanel(_upgradesPanel, _producersPanel));
+            AddTab(bar.transform, "ProfileTab", GameTheme.ProfileTab, UiKit.Icon("star"), 0.608f, 0.794f, () => TogglePanel(_profilePanel));
+            AddTab(bar.transform, "ShopTab", GameTheme.ShopTab, UiKit.Icon("coin"), 0.804f, 0.990f, () => TogglePanel(_shopPanel));
+        }
+
+        void AddTab(Transform bar, string name, string label, Sprite icon, float xMin, float xMax, System.Action onClick)
+        {
+            var (button, text, rect) = UiKit.CreateFancyButton(name, bar, TabBlue, 26, icon);
+            text.text = label;
+            SetBarSlot(rect, xMin, xMax);
+            button.onClick.AddListener(() => onClick());
         }
 
         static void SetBarSlot(RectTransform rt, float xMin, float xMax)
