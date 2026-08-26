@@ -33,9 +33,26 @@ namespace Devside.FishingIdle.Game
             if (elapsed > 5) LastOffline = OfflineProgress.Apply(Config, State, elapsed);
         }
 
+        /// <summary>
+        /// Le bateau est-il au comptoir d'une île marchande ? C'est la seule condition
+        /// de vente du jeu : sans elle, la vente automatique achetée en boutique
+        /// écoulerait la pêche en pleine mer et l'île n'aurait plus d'intérêt
+        /// (retour playtest). Le Core ne connaît pas la géographie : c'est l'hôte
+        /// qui autorise, ou non, la vente à chaque tick.
+        /// </summary>
+        public static bool AtMerchant
+        {
+            get
+            {
+                var boat = BoatController.Instance;
+                return boat != null && boat.Root != null
+                    && WorldMap.MerchantAt(boat.Root.position) != null;
+            }
+        }
+
         void Update()
         {
-            Simulation.Tick(Config, State, Time.deltaTime);
+            Simulation.Tick(Config, State, Time.deltaTime, allowAutoSell: AtMerchant);
 
             _saveTimer += Time.deltaTime;
             if (_saveTimer >= SaveIntervalSeconds)

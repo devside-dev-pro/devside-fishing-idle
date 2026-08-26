@@ -74,6 +74,22 @@ namespace Devside.FishingIdle.Core.Tests
         }
 
         [Test]
+        public void Tick_AutoSell_NeedsHostPermission()
+        {
+            // La vente n'existe qu'au comptoir d'une île : le Core ne connaît pas la
+            // géographie, c'est l'hôte qui autorise la vente automatique tick par tick
+            // (sinon la pêche s'écoulerait en pleine mer et l'île perdrait son intérêt).
+            var config = TestConfigs.Simple();
+            var state = new GameState { autoSellUnlocked = true };
+            state.GetOrCreateProducer("fisher").count = 1;
+
+            Simulation.Tick(config, state, 10, allowAutoSell: false);
+
+            Assert.That(state.money, Is.EqualTo(0).Within(1e-9), "rien ne se vend loin du comptoir");
+            Assert.That(state.rawFish, Is.EqualTo(10).Within(1e-9), "la pêche reste en cale");
+        }
+
+        [Test]
         public void CastLine_AppliesRodMultiplier()
         {
             var config = TestConfigs.Simple();
