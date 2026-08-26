@@ -40,6 +40,7 @@ namespace Devside.FishingIdle.Game
         {
             public GameObject root;
             public Text label;
+            public Text subLabel;
             public Button button;
             public Text buttonLabel;
         }
@@ -116,7 +117,6 @@ namespace Devside.FishingIdle.Game
             BuildPanels(canvas);
             BuildPrestigeBand(canvas);
             BuildBottomBar(canvas);
-            VirtualJoystick.Create(canvas);
             ShowOfflineSummary();
         }
 
@@ -131,9 +131,10 @@ namespace Devside.FishingIdle.Game
             RefreshRows(config, state);
             RefreshMerchant(config);
 
-            // Le comptoir du marchand reste accessible même une fois la vente auto
-            // débloquée : accoster garde une raison d'être (+25 %).
-            bool sellVisible = !state.autoSellUnlocked || _merchantHere != null;
+            // La vente manuelle N'EXISTE qu'au comptoir du marchand (retour playtest :
+            // vendre depuis la mer enlevait tout l'intérêt de l'île). En mer, la cale
+            // se remplit — il faut rentrer au port pour encaisser.
+            bool sellVisible = _merchantHere != null;
             if (_sellButton.gameObject.activeSelf != sellVisible) _sellButton.gameObject.SetActive(sellVisible);
 
             int pending = Prestige.PendingPoints(config, state);
@@ -147,8 +148,7 @@ namespace Devside.FishingIdle.Game
             if (_mapPanel.activeSelf) RefreshMap(config, state);
             if (_profilePanel.activeSelf) RefreshProfile(config, state);
 
-            if (PointerDownOnScene())
-                Cast(PointerScreenPosition());
+            HandleScenePointer();
         }
 
         // ---------- Actions ----------
@@ -214,22 +214,83 @@ namespace Devside.FishingIdle.Game
             _shopPanel.SetActive(false);
         }
 
-        // ---------- Saisie ----------
+        // ---------- Saisie : posé-glissé pour naviguer, tap pour pêcher ----------
 
-        static bool PointerDownOnScene()
+        Vector2 _pointerStart;
+        float _pointerStartTime;
+        bool _pointerOnScene;
+        bool _steering;
+
+        /// <summary>Au-delà de ce déplacement (px à 1080 de large), le toucher devient pilotage.</summary>
+        const float DragDeadZone = 40f;
+
+        /// <summary>Déplacement (px de référence) donnant la pleine vitesse.</summary>
+        const float DragFullSpeed = 190f;
+
+        const float TapMaxDuration = 0.35f;
+
+        /// <summary>
+        /// Un doigt posé sur la scène et glissé dans n'importe quelle direction pilote le
+        /// bateau (plus de joystick — retour playtest) ; un tap bref reste un lancer.
+        /// </summary>
+        void HandleScenePointer()
         {
+            bool pressed, released;
+            Vector2 position;
             if (Input.touchCount > 0)
             {
                 var touch = Input.GetTouch(0);
-                if (touch.phase != TouchPhase.Began) return false;
-                return EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject(touch.fingerId);
+                position = touch.position;
+                pressed = touch.phase == TouchPhase.Began;
+                released = touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled;
             }
-            if (!Input.GetMouseButtonDown(0)) return false;
-            return EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject();
+            else
+            {
+                position = Input.mousePosition;
+                pressed = Input.GetMouseButtonDown(0);
+                released = Input.GetMouseButtonUp(0);
+            }
+            bool held = !pressed && !released && (Input.touchCount > 0 || Input.GetMouseButton(0));
+
+            if (pressed)
+            {
+                _pointerOnScene = !PointerOverUi();
+                _pointerStart = position;
+                _pointerStartTime = Time.unscaledTime;
+                _steering = false;
+            }
+
+            if (!_pointerOnScene)
+            {
+                BoatController.SteerInput = Vector2.zero;
+                return;
+            }
+
+            float toReference = 1080f / Screen.width;
+            var delta = (position - _pointerStart) * toReference;
+            if (!_steering && delta.magnitude > DragDeadZone) _steering = true;
+
+            if (released)
+            {
+                BoatController.SteerInput = Vector2.zero;
+                _pointerOnScene = false;
+                if (!_steering && Time.unscaledTime - _pointerStartTime <= TapMaxDuration)
+                    Cast(position);
+                return;
+            }
+
+            BoatController.SteerInput = _steering && (held || pressed)
+                ? Vector2.ClampMagnitude(delta.normalized * ((delta.magnitude - DragDeadZone) / DragFullSpeed), 1f)
+                : Vector2.zero;
         }
 
-        static Vector2 PointerScreenPosition()
-            => Input.touchCount > 0 ? Input.GetTouch(0).position : (Vector2)Input.mousePosition;
+        static bool PointerOverUi()
+        {
+            if (EventSystem.current == null) return false;
+            return Input.touchCount > 0
+                ? EventSystem.current.IsPointerOverGameObject(Input.GetTouch(0).fingerId)
+                : EventSystem.current.IsPointerOverGameObject();
+        }
 
         // ---------- Rafraîchissement ----------
 
@@ -259,6 +320,13 @@ namespace Devside.FishingIdle.Game
                 int owned = state.ProducerCount(def.id);
                 double cost = Economy.ProducerCost(def, owned);
                 pair.Value.label.text = $"{GameTheme.Producer(def.id)}   ×{owned}";
+                if (pair.Value.subLabel != null)
+                {
+                    double perUnit = def.baseRate * Multipliers.ProducerRate(config, state, def.id);
+                    pair.Value.subLabel.text = owned > 0
+                        ? $"{Numbers.Format(perUnit * owned)}/s"
+                        : $"{Numbers.Format(perUnit)}/s {GameTheme.PerUnitSuffix}";
+                }
                 pair.Value.buttonLabel.text = Numbers.Format(cost);
                 pair.Value.button.interactable = state.money >= cost;
             }
@@ -408,16 +476,22 @@ namespace Devside.FishingIdle.Game
             // Onglet Bateau : producteurs et améliorations réunis (l'ancien double panneau).
             _boatPanel = BuildPanel(canvas, GameTheme.BoatTab, out var boatContent);
             AddSectionHeader(boatContent, GameTheme.ProducersSection);
+            int rowIndex = 0;
             foreach (var def in boot.Config.producers)
             {
                 string id = def.id;
-                _producerRows[id] = CreateShopRow(boatContent, () => Economy.TryBuyProducer(boot.Config, boot.State, id));
+                _producerRows[id] = CreateShopRow(boatContent,
+                    () => Economy.TryBuyProducer(boot.Config, boot.State, id),
+                    alternate: rowIndex++ % 2 == 1, withSubLabel: true);
             }
             AddSectionHeader(boatContent, GameTheme.UpgradesSection);
+            rowIndex = 0;
             foreach (var def in boot.Config.upgrades)
             {
                 string id = def.id;
-                _upgradeRows[id] = CreateShopRow(boatContent, () => Economy.TryBuyUpgrade(boot.Config, boot.State, id));
+                _upgradeRows[id] = CreateShopRow(boatContent,
+                    () => Economy.TryBuyUpgrade(boot.Config, boot.State, id),
+                    alternate: rowIndex++ % 2 == 1);
             }
 
             BuildMapPanel(canvas);
@@ -427,9 +501,9 @@ namespace Devside.FishingIdle.Game
 
         static void AddSectionHeader(Transform parent, string title)
         {
-            var text = UiKit.CreateText("Section", parent, 34, TextDim, TextAnchor.MiddleCenter, FontStyle.Bold);
+            var text = UiKit.CreateText("Section", parent, 30, new Color(0.45f, 0.8f, 0.85f), TextAnchor.MiddleCenter, FontStyle.Bold);
             text.text = title;
-            text.gameObject.AddComponent<LayoutElement>().preferredHeight = 56;
+            text.gameObject.AddComponent<LayoutElement>().preferredHeight = 52;
         }
 
         /// <summary>
@@ -442,13 +516,10 @@ namespace Devside.FishingIdle.Game
             var panel = UiKit.CreateCard("MapPanel", canvas, PanelBg);
             UiKit.AnchorBottom(panel.rectTransform, BottomBarHeight + PrestigeBandHeight + 6, PanelHeight, 16);
 
-            var titleText = UiKit.CreateText("Title", panel.transform, 40, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UiKit.AddOutline(titleText, 1.6f);
-            titleText.text = GameTheme.MapTitle;
-            UiKit.AnchorTop(titleText.rectTransform, 14, 58, 20);
+            AddPanelTitle(panel.transform, GameTheme.MapTitle);
 
             var sea = UiKit.CreateCard("Sea", panel.transform, new Color(0.03f, 0.09f, 0.17f), shadow: false);
-            UiKit.AnchorVerticalSpan(sea.rectTransform, 84, 16, 14);
+            UiKit.AnchorVerticalSpan(sea.rectTransform, 90, 16, 14);
 
             _mapScale = 336f / MapWorldRange;
 
@@ -468,19 +539,39 @@ namespace Devside.FishingIdle.Game
                 circle.rectTransform.sizeDelta = Vector2.one * (boundaries[i] * _mapScale * 2f);
             }
 
+            // Contours fins des frontières de zones : la carte se lit comme une carte marine.
+            for (int i = 0; i < boundaries.Count; i++)
+            {
+                var ring = UiKit.CreateRect("Ring" + i, sea.transform).gameObject.AddComponent<Image>();
+                ring.sprite = UiKit.Ring;
+                ring.color = new Color(1f, 1f, 1f, 0.18f);
+                ring.raycastTarget = false;
+                ring.rectTransform.sizeDelta = Vector2.one * (boundaries[i] * _mapScale * 2f);
+            }
+
             foreach (var island in WorldMap.AllIslands)
             {
+                var halo = UiKit.CreateRect("Halo", sea.transform).gameObject.AddComponent<Image>();
+                halo.sprite = UiKit.Circle;
+                halo.color = new Color(0.03f, 0.08f, 0.13f, 0.8f);
+                halo.raycastTarget = false;
+                halo.rectTransform.sizeDelta = new Vector2(40f, 40f);
+                halo.rectTransform.anchoredPosition = MapPoint(island.position);
+
                 var dot = UiKit.CreateRect("Island", sea.transform).gameObject.AddComponent<Image>();
                 dot.sprite = UiKit.Circle;
-                dot.color = new Color(0.83f, 0.72f, 0.5f);
+                dot.color = new Color(0.87f, 0.75f, 0.52f);
                 dot.raycastTarget = false;
-                dot.rectTransform.sizeDelta = new Vector2(26f, 26f);
+                dot.rectTransform.sizeDelta = new Vector2(28f, 28f);
                 dot.rectTransform.anchoredPosition = MapPoint(island.position);
 
-                var label = UiKit.CreateText("Name", sea.transform, 26, TextMain, TextAnchor.UpperCenter, FontStyle.Bold);
-                UiKit.AddOutline(label, 1.2f);
-                label.rectTransform.sizeDelta = new Vector2(320f, 76f);
-                label.rectTransform.anchoredPosition = MapPoint(island.position) + new Vector2(0f, -24f);
+                // Le nom dans une pastille sombre — lisible sur n'importe quel fond.
+                var pill = UiKit.CreateCard("Pill", sea.transform, new Color(0.03f, 0.08f, 0.13f, 0.85f), shadow: false);
+                pill.raycastTarget = false;
+                pill.rectTransform.sizeDelta = new Vector2(232f, 74f);
+                pill.rectTransform.anchoredPosition = MapPoint(island.position) + new Vector2(0f, -64f);
+                var label = UiKit.CreateText("Name", pill.transform, 24, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
+                UiKit.Stretch(label.rectTransform, 8, 8, 4, 4);
                 _mapIslands.Add(new MapIslandMarker { island = island, label = label });
             }
 
@@ -488,12 +579,20 @@ namespace Devside.FishingIdle.Game
             markerBorder.sprite = UiKit.Circle;
             markerBorder.color = new Color(0.03f, 0.08f, 0.13f);
             markerBorder.raycastTarget = false;
-            markerBorder.rectTransform.sizeDelta = new Vector2(30f, 30f);
+            markerBorder.rectTransform.sizeDelta = new Vector2(32f, 32f);
             var markerFill = UiKit.CreateRect("Fill", markerBorder.transform).gameObject.AddComponent<Image>();
             markerFill.sprite = UiKit.Circle;
             markerFill.color = Color.white;
             markerFill.raycastTarget = false;
             markerFill.rectTransform.sizeDelta = new Vector2(20f, 20f);
+            // Petit bec de cap : la carte montre où le bateau POINTE, pas juste où il est.
+            var tick = UiKit.CreateRect("Tick", markerBorder.transform).gameObject.AddComponent<Image>();
+            tick.sprite = UiKit.Rounded;
+            tick.type = Image.Type.Sliced;
+            tick.color = Color.white;
+            tick.raycastTarget = false;
+            tick.rectTransform.anchoredPosition = new Vector2(0f, 20f);
+            tick.rectTransform.sizeDelta = new Vector2(9f, 18f);
             _boatMarker = markerBorder.rectTransform;
 
             panel.gameObject.SetActive(false);
@@ -505,7 +604,10 @@ namespace Devside.FishingIdle.Game
         void RefreshMap(BalanceConfig config, GameState state)
         {
             if (BoatController.Instance != null)
+            {
                 _boatMarker.anchoredPosition = MapPoint(BoatController.Instance.Root.position);
+                _boatMarker.localEulerAngles = new Vector3(0f, 0f, -BoatController.Instance.Root.eulerAngles.y);
+            }
 
             int maxZone = Catching.MaxNavigableZone(config, state);
             foreach (var marker in _mapIslands)
@@ -564,14 +666,11 @@ namespace Devside.FishingIdle.Game
             var panel = UiKit.CreateCard("ShopPanel", canvas, PanelBg);
             UiKit.AnchorBottom(panel.rectTransform, BottomBarHeight + PrestigeBandHeight + 6, PanelHeight, 16);
 
-            var titleText = UiKit.CreateText("Title", panel.transform, 40, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UiKit.AddOutline(titleText, 1.6f);
-            titleText.text = GameTheme.ShopTab;
-            UiKit.AnchorTop(titleText.rectTransform, 14, 58, 20);
+            AddPanelTitle(panel.transform, GameTheme.ShopTab);
 
             var message = UiKit.CreateText("Soon", panel.transform, 34, TextDim, TextAnchor.MiddleCenter);
             message.text = GameTheme.ShopComingSoon;
-            UiKit.AnchorVerticalSpan(message.rectTransform, 84, 16, 40);
+            UiKit.AnchorVerticalSpan(message.rectTransform, 90, 16, 40);
 
             panel.gameObject.SetActive(false);
             _shopPanel = panel.gameObject;
@@ -582,16 +681,24 @@ namespace Devside.FishingIdle.Game
             var panel = UiKit.CreateCard("Panel", canvas, PanelBg);
             UiKit.AnchorBottom(panel.rectTransform, BottomBarHeight + PrestigeBandHeight + 6, PanelHeight, 16);
 
-            var titleText = UiKit.CreateText("Title", panel.transform, 40, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UiKit.AddOutline(titleText, 1.6f);
-            titleText.text = title;
-            UiKit.AnchorTop(titleText.rectTransform, 14, 58, 20);
+            AddPanelTitle(panel.transform, title);
 
             content = UiKit.CreateScrollList("List", panel.transform, new Color(0f, 0f, 0f, 0.18f));
-            UiKit.AnchorVerticalSpan((RectTransform)content.parent, 84, 16, 14);
+            UiKit.AnchorVerticalSpan((RectTransform)content.parent, 90, 16, 14);
 
             panel.gameObject.SetActive(false);
             return panel.gameObject;
+        }
+
+        /// <summary>Bandeau de titre commun à tous les panneaux (design unifié).</summary>
+        static void AddPanelTitle(Transform panel, string title)
+        {
+            var band = UiKit.CreateCard("TitleBand", panel, new Color(0f, 0f, 0f, 0.28f), shadow: false);
+            UiKit.AnchorTop(band.rectTransform, 10, 68, 12);
+            var titleText = UiKit.CreateText("Title", band.transform, 38, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UiKit.AddOutline(titleText, 1.6f);
+            titleText.text = title;
+            UiKit.Stretch(titleText.rectTransform);
         }
 
         void BuildPrestigeBand(Transform canvas)
@@ -654,18 +761,30 @@ namespace Devside.FishingIdle.Game
             _offlineText.gameObject.SetActive(true);
         }
 
-        ShopRow CreateShopRow(Transform parent, System.Action onBuy)
+        ShopRow CreateShopRow(Transform parent, System.Action onBuy, bool alternate = false, bool withSubLabel = false)
         {
-            var card = UiKit.CreateCard("Row", parent, RowBg, shadow: false);
+            var card = UiKit.CreateCard("Row", parent,
+                alternate ? new Color(1f, 1f, 1f, 0.045f) : RowBg, shadow: false);
             card.gameObject.AddComponent<LayoutElement>().preferredHeight = 122;
 
-            var label = UiKit.CreateText("Name", card.transform, 38, TextMain, TextAnchor.MiddleLeft, FontStyle.Bold);
+            var label = UiKit.CreateText("Name", card.transform, 36, TextMain, TextAnchor.MiddleLeft, FontStyle.Bold);
             UiKit.AddOutline(label, 1.2f);
             var labelRt = label.rectTransform;
-            labelRt.anchorMin = Vector2.zero;
+            labelRt.anchorMin = new Vector2(0f, withSubLabel ? 0.42f : 0f);
             labelRt.anchorMax = Vector2.one;
             labelRt.offsetMin = new Vector2(30f, 0f);
-            labelRt.offsetMax = new Vector2(-330f, 0f);
+            labelRt.offsetMax = new Vector2(-330f, withSubLabel ? -6f : 0f);
+
+            Text subLabel = null;
+            if (withSubLabel)
+            {
+                subLabel = UiKit.CreateText("Sub", card.transform, 26, TextDim, TextAnchor.MiddleLeft);
+                var subRt = subLabel.rectTransform;
+                subRt.anchorMin = Vector2.zero;
+                subRt.anchorMax = new Vector2(1f, 0.42f);
+                subRt.offsetMin = new Vector2(30f, 8f);
+                subRt.offsetMax = new Vector2(-330f, 0f);
+            }
 
             var (button, buttonLabel, buttonRect) = UiKit.CreateFancyButton("Buy", card.transform, BuyGreen, 34);
             buttonRect.anchorMin = new Vector2(1f, 0.5f);
@@ -675,7 +794,7 @@ namespace Devside.FishingIdle.Game
             buttonRect.sizeDelta = new Vector2(300f, 94f);
             button.onClick.AddListener(() => onBuy());
 
-            return new ShopRow { root = card.gameObject, label = label, button = button, buttonLabel = buttonLabel };
+            return new ShopRow { root = card.gameObject, label = label, subLabel = subLabel, button = button, buttonLabel = buttonLabel };
         }
     }
 }

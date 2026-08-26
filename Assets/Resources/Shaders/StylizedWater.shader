@@ -75,14 +75,20 @@ Shader "Devside/StylizedWater"
 
                 half3 base = lerp(_ColorShallow.rgb, _ColorDeep.rgb, saturate(_DepthBlend));
 
-                // Deux couches de vaguelettes qui dérivent dans des directions opposées.
-                float n = vnoise(p * 0.9 + float2(t * 0.18, t * 0.12)) * 0.6
-                        + vnoise(p * 2.3 - float2(t * 0.26, t * 0.2)) * 0.4;
-                half3 color = base * (0.9 + 0.2 * n);
+                // Trois octaves de vaguelettes qui dérivent dans des directions
+                // opposées — la fine casse les grosses « taches » (retour playtest).
+                float n = vnoise(p * 1.4 + float2(t * 0.18, t * 0.12)) * 0.5
+                        + vnoise(p * 3.2 - float2(t * 0.26, t * 0.2)) * 0.32
+                        + vnoise(p * 6.6 + float2(t * 0.4, -t * 0.33)) * 0.18;
+                half3 color = base * (0.92 + 0.16 * n);
 
-                // Crêtes claires sur les sommets du bruit.
-                float crest = smoothstep(0.66, 0.78, n);
-                color = lerp(color, base * 0.35 + half3(0.6, 0.65, 0.68), crest * 0.4);
+                // Crêtes claires, plus fines et plus nettes.
+                float crest = smoothstep(0.62, 0.7, n) * smoothstep(0.78, 0.7, n);
+                color = lerp(color, base * 0.4 + half3(0.55, 0.62, 0.66), crest * 0.5);
+
+                // Scintillements de soleil : pointes rares de bruit haute fréquence.
+                float sparkle = smoothstep(0.965, 1.0, vnoise(p * 9.0 + float2(t * 0.9, -t * 0.7)));
+                color += sparkle * 0.45;
 
                 // Écume elliptique discrète au ras de la coque, alignée sur le cap :
                 // on projette le point sur les axes proue/travers du bateau.

@@ -80,12 +80,19 @@ liberté vient du déplacement, pas de la taille du monde.
 - **On commence sur une barque, à côté d'une île toute petite** avec un ponton, une
   cabane et un marchand (décor en v1 ; le troc arrive en phase « carte & commerce »).
   Chaque zone a son île (silhouettes différentes), posée dans son anneau.
-- **Le comptoir du marchand** (v0.4) : à quai à portée d'une île marchande, la vente
-  manuelle paie `merchantSellBonus` (+25 % en v1) — le trajet est récompensé, jamais
-  la vente automatique. Le bonus est un multiplicateur injecté par la couche hôte
-  dans `Economy.Sell` (le Core ne sait pas où est le bateau), et le bouton
-  « Tout vendre » devient « Comptoir +25 % » à quai. Reste accessible après le
-  déblocage de la vente auto : accoster garde une raison d'être.
+- **Le comptoir du marchand** (v0.4, durci au playtest) : la vente manuelle
+  N'EXISTE qu'à quai chez le marchand — vendre depuis la mer enlevait tout
+  l'intérêt de l'île. En mer, la cale se remplit ; il faut rentrer encaisser
+  (bonus `merchantSellBonus`, +25 % en v1, injecté par la couche hôte dans
+  `Economy.Sell` — le Core ne sait pas où est le bateau). La vente automatique
+  (améliorations tardives) reste le confort de fin de partie.
+- **Pilotage posé-glissé** (retour playtest) : plus de joystick visible — un doigt
+  posé sur la scène et glissé dans n'importe quelle direction pilote le bateau
+  (zone morte 40 px, pleine vitesse à ~190 px) ; un tap bref reste un lancer de
+  ligne. Le joystick gênait les menus et l'écran.
+- **Paliers de navire** : on COMMENCE sur une petite barque ; navire moyen au
+  niveau 3 d'extension de cale, grand navire au niveau 8 — l'évolution se fait
+  petit à petit. Modèles custom (`Art/Custom/Ships/`) prioritaires.
 - Le bot de `PacingTests` simule la couche hôte : il navigue toujours aussi profond que
   sa coque l'autorise — les bornes de rythme couvrent donc aussi la géographie. Il ne
   visite pas le comptoir (bonus non modélisé : borne prudente, le vrai joueur paie le

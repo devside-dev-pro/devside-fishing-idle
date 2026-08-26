@@ -14,6 +14,12 @@ namespace Devside.FishingIdle.Game
     {
         public static BoatController Instance { get; private set; }
 
+        /// <summary>
+        /// Direction de pilotage écran (magnitude ≤ 1), écrite par le geste posé-glissé
+        /// de GameUi — plus de joystick visible (retour playtest).
+        /// </summary>
+        public static Vector2 SteerInput;
+
         /// <summary>Racine monde du bateau : position + cap. La proue est son +x local.</summary>
         public Transform Root { get; private set; }
 
@@ -36,7 +42,7 @@ namespace Devside.FishingIdle.Game
             var state = boot.State;
             int maxZone = Catching.MaxNavigableZone(boot.Config, state);
 
-            var input = VirtualJoystick.Direction;
+            var input = SteerInput;
             if (input.sqrMagnitude > 0.002f)
                 Sail(input, maxZone);
 

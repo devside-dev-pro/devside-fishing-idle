@@ -87,6 +87,35 @@ namespace Devside.FishingIdle.Game
             }
         }
 
+        static Sprite _ring;
+
+        /// <summary>Anneau blanc antialiasé, généré par code (contours de zones sur la carte).</summary>
+        public static Sprite Ring
+        {
+            get
+            {
+                if (_ring != null) return _ring;
+                const int size = 256;
+                const float outer = size / 2f - 1.5f;
+                const float inner = outer - 3f;
+                var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { name = "Ring" };
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        float dx = x - size / 2f + 0.5f;
+                        float dy = y - size / 2f + 0.5f;
+                        float d = Mathf.Sqrt(dx * dx + dy * dy);
+                        float alpha = Mathf.Clamp01(outer - d + 0.5f) * Mathf.Clamp01(d - inner + 0.5f);
+                        tex.SetPixel(x, y, new Color(1f, 1f, 1f, alpha));
+                    }
+                }
+                tex.Apply();
+                _ring = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+                return _ring;
+            }
+        }
+
         /// <summary>Carte à coins arrondis avec ombre portée optionnelle.</summary>
         public static Image CreateCard(string name, Transform parent, Color fill, bool shadow = true)
         {
