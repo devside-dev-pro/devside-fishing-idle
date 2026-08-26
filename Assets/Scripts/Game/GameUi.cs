@@ -552,18 +552,22 @@ namespace Devside.FishingIdle.Game
 
             foreach (var island in WorldMap.AllIslands)
             {
+                // Taille réelle de l'île, pour que la carte dise aussi « celle-ci est
+                // plus grande » (plancher : une pastille trop petite serait illisible).
+                float dotSize = Mathf.Max(24f, island.radius * _mapScale * 2f);
+
                 var halo = UiKit.CreateRect("Halo", sea.transform).gameObject.AddComponent<Image>();
                 halo.sprite = UiKit.Circle;
                 halo.color = new Color(0.03f, 0.08f, 0.13f, 0.8f);
                 halo.raycastTarget = false;
-                halo.rectTransform.sizeDelta = new Vector2(40f, 40f);
+                halo.rectTransform.sizeDelta = Vector2.one * (dotSize + 12f);
                 halo.rectTransform.anchoredPosition = MapPoint(island.position);
 
                 var dot = UiKit.CreateRect("Island", sea.transform).gameObject.AddComponent<Image>();
                 dot.sprite = UiKit.Circle;
                 dot.color = new Color(0.87f, 0.75f, 0.52f);
                 dot.raycastTarget = false;
-                dot.rectTransform.sizeDelta = new Vector2(28f, 28f);
+                dot.rectTransform.sizeDelta = Vector2.one * dotSize;
                 dot.rectTransform.anchoredPosition = MapPoint(island.position);
 
                 // Le nom dans une pastille sombre — lisible sur n'importe quel fond.

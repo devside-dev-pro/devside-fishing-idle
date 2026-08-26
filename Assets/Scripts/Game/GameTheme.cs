@@ -24,7 +24,7 @@ namespace Devside.FishingIdle.Game
             ["rod"] = "Canne améliorée",
             ["crew_training"] = "Formation d'équipage",
             ["market_deals"] = "Contacts au marché",
-            ["auto_sell"] = "Comptoir de vente auto",
+            ["auto_sell"] = "Vente auto au comptoir",
             ["cargo_hold"] = "Extension de cale",
             ["boat_hull"] = "Coque renforcée",
         };

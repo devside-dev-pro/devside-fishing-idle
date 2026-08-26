@@ -78,14 +78,22 @@ liberté vient du déplacement, pas de la taille du monde.
   frontière sans coque → on bute dessus, message « ta coque ne supporte pas ces eaux ».
   Acheter la coque = partir explorer (même économie, sensation de voyage).
 - **On commence sur une barque, à côté d'une île toute petite** avec un ponton, une
-  cabane et un marchand (décor en v1 ; le troc arrive en phase « carte & commerce »).
-  Chaque zone a son île (silhouettes différentes), posée dans son anneau.
-- **Le comptoir du marchand** (v0.4, durci au playtest) : la vente manuelle
-  N'EXISTE qu'à quai chez le marchand — vendre depuis la mer enlevait tout
-  l'intérêt de l'île. En mer, la cale se remplit ; il faut rentrer encaisser
-  (bonus `merchantSellBonus`, +25 % en v1, injecté par la couche hôte dans
-  `Economy.Sell` — le Core ne sait pas où est le bateau). La vente automatique
-  (améliorations tardives) reste le confort de fin de partie.
+  cabane et un marchand. Chaque zone a son île, posée dans son anneau.
+- **Les îles sont des villages, et ils grandissent** (retour playtest) : sol bâti par
+  code (haut-fond, plage, intérieur végétal aux couleurs de l'île), puis maisons en
+  éventail dos au large, habitants, tonneaux, végétation, rochers et un décor
+  signature. Le Vieux Ponton est un hameau (rayon 4,2) ; le Lagon (7,5), les Brumes
+  (10) et les Abysses (13) sont de vrais villages, de plus en plus grands et peuplés —
+  aller loin doit se voir. Le bateau est repoussé un peu au-delà du haut-fond
+  (`Island.BlockRadius`) pour ne jamais chevaucher le sable.
+- **Le comptoir du marchand** (v0.4, durci au playtest) : la vente N'EXISTE qu'à quai
+  chez le marchand — vendre depuis la mer enlevait tout l'intérêt de l'île. En mer, la
+  cale se remplit ; il faut rentrer encaisser (bonus `merchantSellBonus`, neutre en v1,
+  injecté par la couche hôte dans `Economy.Sell` — le Core ne sait pas où est le
+  bateau). **La vente automatique obéit à la même règle** : `Simulation.Tick` ne vend
+  que si l'hôte l'autorise (`GameBootstrap.AtMerchant`), sinon l'amélioration
+  écoulerait la pêche en pleine mer. Elle devient donc « je pose mon bateau au port et
+  ça se vend tout seul » — une décision, pas un contournement de la boucle.
 - **Pilotage posé-glissé** (retour playtest) : plus de joystick visible — un doigt
   posé sur la scène et glissé dans n'importe quelle direction pilote le bateau
   (zone morte 40 px, pleine vitesse à ~190 px) ; un tap bref reste un lancer de
@@ -169,12 +177,12 @@ la 6–8ᵉ heure, et un joueur qui prestige 3 fois avant d'avoir tout vu.
   déterministe (le roll est injecté par l'hôte), valeur de la prise multipliée par
   l'espèce, bonus permanent de production à chaque découverte.
 - Coûts : `coût(n) = base × croissance^n`, achats groupés par somme géométrique.
-- Hors-ligne — **la cale** : pas de vente auto en mer, le poisson s'accumule dans la cale
+- Hors-ligne — **la cale** : pas de vente auto hors-ligne, le poisson s'accumule dans la cale
   et c'est sa capacité (`cargo_hold`, ×2 par niveau) qui plafonne le gain hors-ligne ;
   cale pleine = production stoppée. Deux styles de jeu assumés : le joueur idle investit
   dans la cale et revient la vider (future notification « votre cale est pleine ») ; le
-  joueur actif l'ignore, car en ligne la vente auto vide le stock au fil de l'eau et la
-  cale ne bride jamais le flux. Subtilité voulue : les ateliers compressent le stock
+  joueur actif l'ignore, car en ligne, **à quai**, la vente auto vide le stock au fil de
+  l'eau et la cale ne bride jamais le flux. Subtilité voulue : les ateliers compressent le stock
   (2 découpés → 1 filet), donc transformer augmente la capacité hors-ligne effective.
   `offlineCapSeconds` (72 h) n'est qu'un garde-fou de calcul, pas un levier de gameplay.
 - Prestige : `points = ⌊√(richesse cumulée / 25 M)⌋`, +4 % de production par point (v2).

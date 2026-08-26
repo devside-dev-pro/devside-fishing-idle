@@ -81,10 +81,14 @@ namespace Devside.FishingIdle.Game
         class AmbientFish
         {
             public Transform root;
-            public float radius;
             public float speed;
-            public float phase;
-            public float depth;
+
+            /// <summary>Cap en radians dans le plan XZ (le poisson va où il regarde).</summary>
+            public float heading;
+
+            public float wanderPhase;
+            public float divePhase;
+            public float baseDepth;
         }
 
         Camera _camera;
@@ -490,17 +494,23 @@ namespace Devside.FishingIdle.Game
 
         static readonly string[] AmbientSmallSpecies = { "sardine", "mackerel", "sea_bass" };
 
+        /// <summary>Distance au bateau au-delà de laquelle un poisson est relâché ailleurs.</summary>
+        const float FishRecycleRadius = 17f;
+
+        /// <summary>Distance d'apparition : hors cadre, pour que le tour de passe-passe ne se voie pas.</summary>
+        const float FishSpawnRadius = 13f;
+
         void BuildAmbientFish()
         {
-            for (int i = 0; i < 5; i++)
-                AddAmbientFish(AmbientSmallSpecies[i % AmbientSmallSpecies.Length], 0.5f,
-                    2.7f + i * 0.5f, 0.28f + (i % 3) * 0.1f, i * 1.9f, -0.03f);
-            AddAmbientFish("abyssal_shark", 1.1f, 5.4f, 0.22f, 1.2f, -0.05f);
-            AddAmbientFish("moonfish", 0.95f, 5.9f, 0.16f, 3.8f, -0.08f);
-            AddAmbientFish("leviathan", 2.3f, 7.2f, 0.08f, 5.5f, -0.18f);
+            for (int i = 0; i < 6; i++)
+                AddAmbientFish(AmbientSmallSpecies[i % AmbientSmallSpecies.Length],
+                    0.5f, 1.15f + i * 0.12f, -0.2f - (i % 3) * 0.06f);
+            AddAmbientFish("abyssal_shark", 1.1f, 1.6f, -0.3f);
+            AddAmbientFish("moonfish", 0.95f, 0.95f, -0.26f);
+            AddAmbientFish("leviathan", 2.3f, 0.75f, -0.42f);
         }
 
-        void AddAmbientFish(string speciesId, float size, float radius, float speed, float phase, float depth)
+        void AddAmbientFish(string speciesId, float size, float speed, float baseDepth)
         {
             var root = new GameObject("AmbientFish").transform;
             var model = SpawnFishModel(speciesId, size, root);
@@ -512,7 +522,32 @@ namespace Devside.FishingIdle.Game
                 body.GetComponent<Renderer>().material = Mat(FallbackFish);
                 Destroy(body.GetComponent<Collider>());
             }
-            _ambientFish.Add(new AmbientFish { root = root, radius = radius, speed = speed, phase = phase, depth = depth });
+            var fish = new AmbientFish
+            {
+                root = root,
+                speed = speed,
+                baseDepth = baseDepth,
+                wanderPhase = Random.value * 12f,
+                divePhase = Random.value * 12f,
+            };
+            ReleaseAmbientFish(fish, _boat != null ? _boat.position : Vector3.zero, spread: true);
+            _ambientFish.Add(fish);
+        }
+
+        /// <summary>
+        /// (Re)lâche un poisson autour du joueur : au premier peuplement il peut naître
+        /// n'importe où dans le champ, ensuite toujours au bord et cap tourné vers la
+        /// zone de jeu — il la traverse au lieu de s'en éloigner aussitôt.
+        /// </summary>
+        void ReleaseAmbientFish(AmbientFish fish, Vector3 center, bool spread = false)
+        {
+            float angle = Random.value * Mathf.PI * 2f;
+            float distance = spread ? Random.Range(3f, FishSpawnRadius) : FishSpawnRadius;
+            fish.root.position = new Vector3(
+                center.x + Mathf.Cos(angle) * distance,
+                fish.baseDepth,
+                center.z + Mathf.Sin(angle) * distance);
+            fish.heading = angle + Mathf.PI + Random.Range(-0.9f, 0.9f);
         }
 
         /// <summary>
@@ -635,19 +670,29 @@ namespace Devside.FishingIdle.Game
 
         void AnimateAmbientFish(float t)
         {
-            // Les poissons tournent autour du bateau, où qu'il soit : la vie suit le joueur.
+            // La vie marine vit dans l'EAU, pas autour de la coque : chaque poisson
+            // suit son cap en coordonnées monde (il défile donc vraiment quand on
+            // navigue), serpente un peu, et plonge sous la surface — le plan d'eau
+            // étant opaque, c'est lui qui fait disparaître le poisson. Quand il sort
+            // du champ, on le relâche discrètement de l'autre côté : il y a toujours
+            // de la vie à voir, sans jamais de banc collé au bateau.
             Vector3 center = _boat != null ? _boat.position : Vector3.zero;
-            center.y = 0f;
+            float dt = Time.deltaTime;
             for (int i = 0; i < _ambientFish.Count; i++)
             {
                 var fish = _ambientFish[i];
-                float angle = fish.phase + t * fish.speed;
-                fish.root.position = center + new Vector3(
-                    Mathf.Cos(angle) * fish.radius * 1.3f,
-                    fish.depth,
-                    Mathf.Sin(angle) * fish.radius);
-                var tangent = new Vector3(-Mathf.Sin(angle) * 1.3f, 0f, Mathf.Cos(angle));
-                fish.root.rotation = Quaternion.LookRotation(tangent);
+                fish.heading += Mathf.Sin(t * 0.5f + fish.wanderPhase) * 0.55f * dt;
+                var direction = new Vector3(Mathf.Cos(fish.heading), 0f, Mathf.Sin(fish.heading));
+
+                var position = fish.root.position + direction * (fish.speed * dt);
+                position.y = fish.baseDepth + Mathf.Sin(t * 0.45f + fish.divePhase) * 0.3f;
+                fish.root.position = position;
+                fish.root.rotation = Quaternion.LookRotation(direction);
+
+                float dx = position.x - center.x;
+                float dz = position.z - center.z;
+                if (dx * dx + dz * dz > FishRecycleRadius * FishRecycleRadius)
+                    ReleaseAmbientFish(fish, center);
             }
         }
 

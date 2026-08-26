@@ -24,6 +24,18 @@ namespace Devside.FishingIdle.Game
         public const string Dock = "Art/PirateQuaternius/Environment_Dock";
         public const string House = "Art/PirateQuaternius/Environment_House1";
         public const string Merchant = "Art/PirateQuaternius/Characters_Sharky";
+        public const string DockPole = "Art/PirateQuaternius/Environment_Dock_Pole";
+        public const string Anchor = "Art/PirateQuaternius/Prop_Anchor";
+        public const string Skeleton = "Art/PirateQuaternius/Characters_Skeleton";
+
+        // Un village a besoin de plusieurs maisons et d'habitants qui ne se ressemblent pas.
+        public static readonly string[] Houses =
+        {
+            "Art/PirateQuaternius/Environment_House1",
+            "Art/PirateQuaternius/Environment_House2",
+            "Art/PirateQuaternius/Environment_House3",
+        };
+        public static readonly string[] Villagers = { CrewT1, CrewT2, CrewT3, Captain };
 
         // Packs itch.io déposés dans Resources/Art/Custom/ (licences : CREDITS.md).
         public static string Tropical(string name) => "Art/Custom/TropicalIsland/" + name;
