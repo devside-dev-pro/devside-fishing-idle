@@ -10,9 +10,10 @@ namespace Devside.FishingIdle.Game
     /// qui MATÉRIALISE l'état du jeu — chaque pêcheur acheté apparaît sur le pont et lance
     /// sa ligne, les barils s'empilent avec la cale, le navire est remplacé par un plus
     /// grand au niveau 5 d'extension de cale, l'eau (shader stylisé) fonce avec la
-    /// profondeur, des poissons nagent autour, une île se dessine au loin.
-    /// Chaque modèle a un fallback primitive si l'asset manque (codage défensif).
-    /// Ajouté automatiquement par GameUi.
+    /// profondeur, des poissons nagent autour. Chaque modèle a un fallback primitive si
+    /// l'asset manque (codage défensif). Ajouté automatiquement par GameUi.
+    /// La coque est accrochée sous BoatController.Root (position + cap dans l'archipel,
+    /// îles gérées par WorldMap) ; caméra, océan et écume suivent le bateau (FollowBoat).
     /// </summary>
     public class BoatView : MonoBehaviour
     {
@@ -113,7 +114,6 @@ namespace Devside.FishingIdle.Game
         {
             SetupCameraAndLight();
             BuildSea();
-            BuildIsland();
             BuildAmbientFish();
         }
 
@@ -164,6 +164,27 @@ namespace Devside.FishingIdle.Game
             for (int tier = 0; tier < 3; tier++)
                 AnimateCrew(_crew[tier], t + tier * 2.7f);
             AnimateAmbientFish(t);
+        }
+
+        /// <summary>
+        /// Suivi du bateau, appelé par BoatController après le déplacement : la caméra
+        /// reste cadrée sur la coque, le plan d'eau glisse sous elle (le bruit du shader
+        /// est en coordonnées monde, donc l'eau « défile » vraiment), et l'anneau
+        /// d'écume reçoit position + cap.
+        /// </summary>
+        public void FollowBoat(Transform root)
+        {
+            if (_camera != null)
+                _camera.transform.position = root.position - _camera.transform.forward * 22f + _camera.transform.up * 0.7f;
+            if (_water != null)
+                _water.transform.position = new Vector3(root.position.x, 0f, root.position.z);
+            if (_stylizedWater && _waterMaterial != null)
+            {
+                var forward = new Vector2(root.right.x, root.right.z);
+                forward = forward.sqrMagnitude < 0.001f ? Vector2.right : forward.normalized;
+                _waterMaterial.SetVector("_BoatPos",
+                    new Vector4(root.position.x, root.position.z, forward.x, forward.y));
+            }
         }
 
         /// <summary>Poisson qui jaillit + chiffre qui vole, à l'endroit tapé (coordonnées écran).</summary>
@@ -219,6 +240,9 @@ namespace Devside.FishingIdle.Game
             var water = GameObject.CreatePrimitive(PrimitiveType.Plane);
             water.name = "Water";
             water.transform.localScale = new Vector3(8f, 1f, 8f);
+            // Le plan suit le bateau chaque frame : pas de collider (les raycasts de
+            // pont ne doivent voir que la coque, et un collider mobile coûte cher).
+            Destroy(water.GetComponent<Collider>());
             _water = water.GetComponent<Renderer>();
 
             var stylized = Shader.Find("Devside/StylizedWater");
@@ -234,22 +258,6 @@ namespace Devside.FishingIdle.Game
             _water.material = _waterMaterial;
         }
 
-        void BuildIsland()
-        {
-            var island = new GameObject("Island").transform;
-            island.position = new Vector3(5.4f, 0f, 2.8f);
-
-            var cliff = ArtLibrary.Spawn(ArtLibrary.Cliff, island);
-            if (cliff != null) ArtLibrary.NormalizeToSize(cliff, 3.2f, 0.35f);
-
-            var palm = ArtLibrary.Spawn(ArtLibrary.Palm, island);
-            if (palm != null)
-            {
-                ArtLibrary.NormalizeToHeight(palm, 1.7f);
-                palm.transform.position += new Vector3(0.9f, 0.25f, 0.7f);
-            }
-        }
-
         void EnsureShip(GameState state)
         {
             string wanted = state.UpgradeLevel("cargo_hold") >= LargeShipHoldLevel
@@ -263,6 +271,10 @@ namespace Devside.FishingIdle.Game
         void RebuildShip(string path)
         {
             if (_boat == null) _boat = new GameObject("Boat").transform;
+            // Mesures de bounds et raycasts de pont supposent une coque à l'origine en
+            // rotation identité : on la détache du BoatRoot (qui peut être loin et
+            // orienté) le temps de la reconstruction, puis on la raccroche à la fin.
+            _boat.SetParent(null, false);
             _boat.localRotation = Quaternion.identity;
             _boat.localScale = Vector3.one;
             _boat.localPosition = Vector3.zero;
@@ -294,6 +306,9 @@ namespace Devside.FishingIdle.Game
 
             _slots = new[] { ResolveSlots(T1Slots), ResolveSlots(T2Slots), ResolveSlots(T3Slots) };
             BuildDeckProps();
+
+            if (BoatController.Instance != null)
+                _boat.SetParent(BoatController.Instance.Root, false);
         }
 
         void BuildFallbackShip()
@@ -503,11 +518,14 @@ namespace Devside.FishingIdle.Game
 
         void AnimateAmbientFish(float t)
         {
+            // Les poissons tournent autour du bateau, où qu'il soit : la vie suit le joueur.
+            Vector3 center = _boat != null ? _boat.position : Vector3.zero;
+            center.y = 0f;
             for (int i = 0; i < _ambientFish.Count; i++)
             {
                 var fish = _ambientFish[i];
                 float angle = fish.phase + t * fish.speed;
-                fish.root.position = new Vector3(
+                fish.root.position = center + new Vector3(
                     Mathf.Cos(angle) * fish.radius * 1.3f,
                     fish.depth,
                     Mathf.Sin(angle) * fish.radius);
@@ -520,16 +538,18 @@ namespace Devside.FishingIdle.Game
 
         Vector3 RaycastWater(Vector2 screenPosition)
         {
+            Vector3 center = _boat != null ? _boat.position : Vector3.zero;
+            center.y = 0f;
             var ray = _camera.ScreenPointToRay(screenPosition);
             var plane = new Plane(Vector3.up, Vector3.zero);
             if (plane.Raycast(ray, out float distance))
             {
                 var point = ray.GetPoint(distance);
-                point.x = Mathf.Clamp(point.x, -4f, 4f);
-                point.z = Mathf.Clamp(point.z, -3.5f, 3.5f);
+                point.x = Mathf.Clamp(point.x, center.x - 4f, center.x + 4f);
+                point.z = Mathf.Clamp(point.z, center.z - 3.5f, center.z + 3.5f);
                 return point;
             }
-            return new Vector3(1.5f, 0f, 2.2f);
+            return center + new Vector3(1.5f, 0f, 2.2f);
         }
 
         IEnumerator FishJump(Vector3 from)
@@ -550,7 +570,7 @@ namespace Devside.FishingIdle.Game
                 Destroy(body.GetComponent<Collider>());
             }
 
-            Vector3 to = new Vector3(0f, 1f, 0f);
+            Vector3 to = (_boat != null ? _boat.position : Vector3.zero) + Vector3.up;
             const float duration = 0.65f;
             float elapsed = 0f;
             while (elapsed < duration)

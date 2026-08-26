@@ -22,6 +22,9 @@ namespace Devside.FishingIdle.Core.Tests
             var rng = new System.Random(20260825); // graine fixe : le bot est rejouable
             for (int t = 0; t < seconds; t++)
             {
+                // La profondeur est de la géographie : le bot joue la couche hôte et
+                // navigue toujours aussi profond que sa coque l'autorise.
+                state.currentZone = Catching.MaxNavigableZone(config, state);
                 for (int c = 0; c < 3; c++) Simulation.CastLine(config, state, rng.NextDouble());
                 Simulation.Tick(config, state, 1);
                 if (!state.autoSellUnlocked && t % 10 == 0) Economy.SellAll(config, state);

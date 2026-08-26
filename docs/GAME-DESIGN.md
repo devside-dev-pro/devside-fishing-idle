@@ -55,6 +55,34 @@ L'eau est un shader stylisé maison (`Devside/StylizedWater`) : dégradé de pro
 vaguelettes, écume autour de la coque. Étape suivante (plus tard) : animations
 squelettiques des personnages (les modèles sont riggés) et upgrade éventuel vers Synty.
 
+## L'archipel navigable (semi-open world)
+
+Référence : *How to Fish* pour la sensation « je pars en mer », vue du dessus type
+*Project Zomboid*. Ce n'est pas un vrai open world — c'est un **archipel** : quelques
+îles posées sur un océan, et tout le reste est de l'eau à pêcher. La sensation de
+liberté vient du déplacement, pas de la taille du monde.
+
+- **Joystick virtuel** (bas-gauche) : le bateau se déplace librement sur l'océan,
+  caméra top-down qui suit, l'eau défile (bruit du shader en coordonnées monde).
+- **La profondeur est de la géographie** : le monde est découpé en **anneaux de zones**
+  concentriques autour du point de départ (rayons 35/85/145, au-delà = zone 3).
+  `state.currentZone` est écrit par la couche hôte d'après la position ; le Core ne fait
+  que le lire (`Catching.DepthLevel`). Les espèces profondes se pêchent **là-bas**, pas
+  via un menu.
+- **La coque est un permis de naviguer** : `boat_hull` ne donne plus les espèces
+  directement — `Catching.MaxNavigableZone` borne le rayon navigable. Franchir la
+  frontière sans coque → on bute dessus, message « ta coque ne supporte pas ces eaux ».
+  Acheter la coque = partir explorer (même économie, sensation de voyage).
+- **On commence sur une barque, à côté d'une île toute petite** avec un ponton, une
+  cabane et un marchand (décor en v1 ; le troc arrive en phase « carte & commerce »).
+  Chaque zone a son île (silhouettes différentes), posée dans son anneau.
+- Le bot de `PacingTests` simule la couche hôte : il navigue toujours aussi profond que
+  sa coque l'autorise — les bornes de rythme couvrent donc aussi la géographie.
+
+Étapes suivantes (annoncées) : **carte** qui révèle la prochaine île et accostage /
+troc chez le marchand, puis **pêche active** (viser, lancer, ferrer, mouliner — la
+pêche manuelle devient un vrai geste pendant que l'équipage continue en idle).
+
 ## Le principe directeur : le métier du joueur change
 
 Le piège mortel d'un idle est la répétition. La parade n'est pas « plus de contenu », c'est

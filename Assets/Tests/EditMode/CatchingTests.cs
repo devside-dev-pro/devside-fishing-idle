@@ -44,15 +44,26 @@ namespace Devside.FishingIdle.Core.Tests
         }
 
         [Test]
-        public void PickSpecies_HullUpgradeUnlocksDeepSpecies()
+        public void PickSpecies_CurrentZoneUnlocksDeepSpecies()
         {
             var config = ConfigWithSpecies();
-            var state = new GameState();
-            state.GetOrCreateUpgrade("hull").level = 1;
+            var state = new GameState { currentZone = 1 }; // le bateau navigue en zone 1
 
             Assert.That(Catching.DepthLevel(config, state), Is.EqualTo(1));
             // Total 104, deep pèse 100 : roll 0.5 → cible 52 → deep.
             Assert.That(Catching.PickSpecies(config, state, 0.5).id, Is.EqualTo("deep"));
+        }
+
+        [Test]
+        public void MaxNavigableZone_ComesFromHullUpgrade()
+        {
+            var config = ConfigWithSpecies();
+            var state = new GameState();
+
+            Assert.That(Catching.MaxNavigableZone(config, state), Is.EqualTo(0));
+            state.GetOrCreateUpgrade("hull").level = 2;
+            Assert.That(Catching.MaxNavigableZone(config, state), Is.EqualTo(2),
+                "la coque autorise la navigation, la zone donne les espèces");
         }
 
         [Test]

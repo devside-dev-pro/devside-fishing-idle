@@ -1,5 +1,6 @@
 // Eau stylisée URP : dégradé de profondeur, vaguelettes procédurales qui dérivent,
-// crêtes claires, et anneau d'écume elliptique autour du bateau (qui vit à l'origine).
+// crêtes claires, et anneau d'écume elliptique autour du bateau (_BoatPos : position
+// XZ + cap, poussés chaque frame par BoatView.FollowBoat — le bateau navigue).
 // Placé dans Resources/ pour être embarqué dans les builds (chargé via Shader.Find).
 Shader "Devside/StylizedWater"
 {
@@ -10,6 +11,7 @@ Shader "Devside/StylizedWater"
         _DepthBlend("Profondeur (0-1)", Range(0, 1)) = 0
         _FoamColor("Couleur ecume", Color) = (0.92, 0.98, 1, 1)
         _FoamRadius("Rayon ecume", Float) = 3.4
+        _BoatPos("Bateau (pos xz, cap xz)", Vector) = (0, 0, 1, 0)
     }
     SubShader
     {
@@ -27,6 +29,7 @@ Shader "Devside/StylizedWater"
                 half4 _FoamColor;
                 float _DepthBlend;
                 float _FoamRadius;
+                float4 _BoatPos;
             CBUFFER_END
 
             struct Attributes
@@ -81,8 +84,13 @@ Shader "Devside/StylizedWater"
                 float crest = smoothstep(0.66, 0.78, n);
                 color = lerp(color, base * 0.35 + half3(0.6, 0.65, 0.68), crest * 0.4);
 
-                // Écume elliptique discrète au ras de la coque (bateau à l'origine, allongé en x).
-                float d = length(float2(p.x * 0.55, p.y));
+                // Écume elliptique discrète au ras de la coque, alignée sur le cap :
+                // on projette le point sur les axes proue/travers du bateau.
+                float2 rel = p - _BoatPos.xy;
+                float2 fwd = _BoatPos.zw;
+                float along = dot(rel, fwd);
+                float across = dot(rel, float2(-fwd.y, fwd.x));
+                float d = length(float2(along * 0.55, across));
                 float ring = smoothstep(_FoamRadius, _FoamRadius - 0.2, d)
                            * smoothstep(_FoamRadius - 0.7, _FoamRadius - 0.4, d);
                 float foamNoise = vnoise(p * 4.5 + float2(t * 0.35, -t * 0.3));

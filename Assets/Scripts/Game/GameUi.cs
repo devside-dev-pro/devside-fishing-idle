@@ -16,6 +16,8 @@ namespace Devside.FishingIdle.Game
     [RequireComponent(typeof(GameBootstrap))]
     public class GameUi : MonoBehaviour
     {
+        public static GameUi Instance { get; private set; }
+
         const float HeaderHeight = 332f;
         const float BottomBarHeight = 190f;
         const float PrestigeBandHeight = 92f;
@@ -62,10 +64,19 @@ namespace Devside.FishingIdle.Game
         readonly Dictionary<string, ShopRow> _producerRows = new Dictionary<string, ShopRow>();
         readonly Dictionary<string, ShopRow> _upgradeRows = new Dictionary<string, ShopRow>();
 
+        void Awake()
+        {
+            Instance = this;
+        }
+
         void Start()
         {
             var devHud = GetComponent<DevHud>();
             if (devHud != null) devHud.enabled = false;
+            // L'archipel et le pilotage d'abord : BoatView accroche la coque sous
+            // BoatController.Root dès sa première frame.
+            if (GetComponent<WorldMap>() == null) gameObject.AddComponent<WorldMap>();
+            if (GetComponent<BoatController>() == null) gameObject.AddComponent<BoatController>();
             if (GetComponent<BoatView>() == null) gameObject.AddComponent<BoatView>();
 
             EnsureEventSystem();
@@ -75,6 +86,7 @@ namespace Devside.FishingIdle.Game
             BuildPanels(canvas);
             BuildPrestigeBand(canvas);
             BuildBottomBar(canvas);
+            VirtualJoystick.Create(canvas);
             ShowOfflineSummary();
         }
 
@@ -120,7 +132,8 @@ namespace Devside.FishingIdle.Game
             if (BoatView.Instance != null) BoatView.Instance.PlayCatchEffect(screenPosition, result);
         }
 
-        void ShowBanner(string text)
+        /// <summary>Bandeau d'information sous le header (captures, zone atteinte, blocages).</summary>
+        public void ShowBanner(string text)
         {
             _catchBanner.text = text;
             _catchBannerCard.SetActive(true);
