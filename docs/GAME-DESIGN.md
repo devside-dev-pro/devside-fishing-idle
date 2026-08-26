@@ -176,7 +176,9 @@ speedrun : pas de vente auto en 15 min, canne loin du max à 1 h, Poissodex inco
 
 ## Hors périmètre v1 (décisions à prendre plus tard)
 
-- Monétisation (pub récompensée vs IAP) — rien dans le code tant que la boucle n'est pas fun.
+- Monétisation : le plan complet (deux monnaies, pubs récompensées, IAP, profil
+  et équipements, refonte 5 onglets, roadmap) est posé dans **BUSINESS-PLAN.md**
+  — rien n'entre dans le code tant que la boucle n'est pas fun.
 - Direction artistique (low-poly 3D vs 2D) — le DevHud suffit tant que l'économie n'est pas
   validée.
 - Couche roguelike « sorties en mer » (runs courts à choix de leurres/reliques) — prévue
