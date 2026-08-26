@@ -61,6 +61,19 @@ namespace Devside.FishingIdle.Game
         public static float AllowedRadius(int maxZone)
             => maxZone >= ZoneRadii.Length ? float.PositiveInfinity : ZoneRadii[maxZone];
 
+        /// <summary>L'île marchande à portée d'accostage de cette position ; null sinon.</summary>
+        public static Island MerchantAt(Vector3 position)
+        {
+            for (int i = 0; i < Islands.Length; i++)
+            {
+                var island = Islands[i];
+                if (!island.hasMerchant) continue;
+                var offset = new Vector2(position.x - island.position.x, position.z - island.position.z);
+                if (offset.magnitude <= island.radius + 2.5f) return island;
+            }
+            return null;
+        }
+
         /// <summary>Repousse une position hors des plages : le bateau contourne les îles.</summary>
         public static Vector3 PushOutOfIslands(Vector3 position)
         {

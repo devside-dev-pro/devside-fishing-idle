@@ -51,6 +51,10 @@ namespace Devside.FishingIdle.Game
         Text _offlineText;
         RectTransform _holdFill;
         Button _sellButton;
+        Text _sellLabel;
+
+        /// <summary>Île marchande où le bateau est à quai (null en mer) — bonus au comptoir.</summary>
+        WorldMap.Island _merchantHere;
 
         GameObject _catchBannerCard;
         Text _catchBanner;
@@ -125,8 +129,11 @@ namespace Devside.FishingIdle.Game
 
             RefreshHeader(config, state);
             RefreshRows(config, state);
+            RefreshMerchant(config);
 
-            bool sellVisible = !state.autoSellUnlocked;
+            // Le comptoir du marchand reste accessible même une fois la vente auto
+            // débloquée : accoster garde une raison d'être (+25 %).
+            bool sellVisible = !state.autoSellUnlocked || _merchantHere != null;
             if (_sellButton.gameObject.activeSelf != sellVisible) _sellButton.gameObject.SetActive(sellVisible);
 
             int pending = Prestige.PendingPoints(config, state);
@@ -160,6 +167,29 @@ namespace Devside.FishingIdle.Game
             ShowBanner($"{GameTheme.Species(result.speciesId)}  +{Numbers.Format(result.amount)}{discovery}");
             if (BoatView.Instance != null) BoatView.Instance.PlayCatchEffect(screenPosition, result);
         }
+
+        /// <summary>
+        /// À quai chez le marchand, la vente paie mieux : bannière d'accueil à
+        /// l'arrivée et bouton « Tout vendre » qui devient le comptoir bonifié.
+        /// </summary>
+        void RefreshMerchant(BalanceConfig config)
+        {
+            var merchant = BoatController.Instance != null
+                ? WorldMap.MerchantAt(BoatController.Instance.Root.position)
+                : null;
+            if (merchant == _merchantHere) return;
+
+            _merchantHere = merchant;
+            int percent = (int)System.Math.Round((config.merchantSellBonus - 1) * 100);
+            if (merchant != null)
+                ShowBanner(string.Format(GameTheme.MerchantWelcomeFormat, GameTheme.Island(merchant.id), percent));
+            _sellLabel.text = merchant != null
+                ? string.Format(GameTheme.MerchantSellFormat, percent)
+                : GameTheme.SellAllAction;
+        }
+
+        double CurrentSellMultiplier(BalanceConfig config)
+            => _merchantHere != null ? config.merchantSellBonus : 1;
 
         /// <summary>Bandeau d'information sous le header (captures, zone atteinte, blocages).</summary>
         public void ShowBanner(string text)
@@ -349,9 +379,10 @@ namespace Devside.FishingIdle.Game
             sellButton.onClick.AddListener(() =>
             {
                 var boot = GameBootstrap.Instance;
-                Economy.SellAll(boot.Config, boot.State);
+                Economy.SellAll(boot.Config, boot.State, CurrentSellMultiplier(boot.Config));
             });
             _sellButton = sellButton;
+            _sellLabel = sellLabel;
 
             _offlineText = UiKit.CreateText("Offline", canvas, 30, new Color(1f, 0.85f, 0.4f), TextAnchor.MiddleCenter);
             UiKit.AddOutline(_offlineText, 1.2f);
