@@ -8,12 +8,17 @@ licence ne l'exige pas.
 tableau au moment du dépôt dans `Assets/Resources/Art/` — licence vérifiée sur la
 page du pack avant téléchargement (voir `docs/ASSET-PIPELINE.md`, « Packs tiers »).
 
-| Pack | Auteur | Licence | Source |
-|---|---|---|---|
-| Pirate Kit | Kenney | CC0 | https://kenney.nl/assets/pirate-kit |
-| Ultimate Pirate Pack (nov. 2023) | Quaternius | CC0 | https://quaternius.com |
-| Animated Fish Pack | Quaternius | CC0 | https://quaternius.com |
-| Universal Base Characters | Quaternius | CC0 | https://quaternius.com |
+| Pack | Dossier | Auteur | Licence | Source |
+|---|---|---|---|---|
+| Ultimate Pirate Pack (nov. 2023) | `Art/PirateQuaternius` | Quaternius | CC0 | https://quaternius.com |
+| Universal Base Characters | `Art/Characters` | Quaternius | CC0 | https://quaternius.com |
+| KayKit : RPG Tools Bits 1.0 | `Art/Custom/kaykitrpg` | Kay Lousberg | CC0 (License.txt inclus) | https://kaylousberg.itch.io |
+| Low Poly 3D and Pixel 2D RPG Game Assets | `Art/Custom/PixelRPG` | Devil's Work.shop | **à confirmer sur la page** | https://devilsworkshop.itch.io/low-poly-3d-and-pixel-2d-rpg-game-assets |
+| Tropical Environment Lite (« TropicalIsland ») | `Art/Custom/TropicalIsland` | **à compléter** | **à confirmer sur la page** | itch.io (**lien à coller**) |
+| Beach Props (« BeachProps ») | `Art/Custom/BeachProps` | **à compléter** | **à confirmer sur la page** | itch.io (**lien à coller**) |
+
+Retirés du projet (plus aucun fichier ni référence) : Pirate Kit (Kenney) et
+Animated Fish Pack (Quaternius) — remplacés par les assets custom et itch.io.
 
 Le shader d'eau (`Assets/Resources/Shaders/StylizedWater.shader`) et tout le code sont
 écrits pour ce projet.

@@ -493,18 +493,17 @@ namespace Devside.FishingIdle.Game
         void BuildAmbientFish()
         {
             for (int i = 0; i < 5; i++)
-                AddAmbientFish(AmbientSmallSpecies[i % AmbientSmallSpecies.Length],
-                    ArtLibrary.SmallFish[i % ArtLibrary.SmallFish.Length], 0.5f,
+                AddAmbientFish(AmbientSmallSpecies[i % AmbientSmallSpecies.Length], 0.5f,
                     2.7f + i * 0.5f, 0.28f + (i % 3) * 0.1f, i * 1.9f, -0.03f);
-            AddAmbientFish("abyssal_shark", ArtLibrary.Shark, 1.1f, 5.4f, 0.22f, 1.2f, -0.05f);
-            AddAmbientFish("moonfish", ArtLibrary.Manta, 0.95f, 5.9f, 0.16f, 3.8f, -0.08f);
-            AddAmbientFish("leviathan", ArtLibrary.Whale, 2.3f, 7.2f, 0.08f, 5.5f, -0.18f);
+            AddAmbientFish("abyssal_shark", 1.1f, 5.4f, 0.22f, 1.2f, -0.05f);
+            AddAmbientFish("moonfish", 0.95f, 5.9f, 0.16f, 3.8f, -0.08f);
+            AddAmbientFish("leviathan", 2.3f, 7.2f, 0.08f, 5.5f, -0.18f);
         }
 
-        void AddAmbientFish(string speciesId, string packPath, float size, float radius, float speed, float phase, float depth)
+        void AddAmbientFish(string speciesId, float size, float radius, float speed, float phase, float depth)
         {
             var root = new GameObject("AmbientFish").transform;
-            var model = SpawnFishModel(speciesId, packPath, size, root);
+            var model = SpawnFishModel(speciesId, size, root);
             if (model == null)
             {
                 var body = GameObject.CreatePrimitive(PrimitiveType.Sphere).transform;
@@ -518,20 +517,16 @@ namespace Devside.FishingIdle.Game
 
         /// <summary>
         /// Modèle d'un poisson : l'espèce custom générée (Meshy — créée de profil, nez
-        /// en +x, on la tourne vers +z comme les modèles du pack) si elle est déposée
-        /// dans Resources/Art/Custom/Fish, sinon le modèle de pack ; null si rien.
+        /// en +x, on la tourne vers +z, la convention du jeu) depuis
+        /// Resources/Art/Custom/Fish ; null si elle n'est pas déposée (fallback
+        /// primitive à l'appelant — le pack poissons Quaternius a été retiré du repo).
         /// </summary>
-        GameObject SpawnFishModel(string speciesId, string packPath, float size, Transform parent)
+        GameObject SpawnFishModel(string speciesId, float size, Transform parent)
         {
-            GameObject model = null;
-            if (!string.IsNullOrEmpty(speciesId))
-            {
-                model = ArtLibrary.SpawnQuiet(ArtLibrary.CustomFish(speciesId));
-                if (model != null)
-                    model.transform.rotation = Quaternion.Euler(0f, -90f, 0f);
-            }
-            if (model == null) model = ArtLibrary.SpawnQuiet(packPath);
+            if (string.IsNullOrEmpty(speciesId)) return null;
+            var model = ArtLibrary.SpawnQuiet(ArtLibrary.CustomFish(speciesId));
             if (model == null) return null;
+            model.transform.rotation = Quaternion.Euler(0f, -90f, 0f);
             ArtLibrary.NormalizeToSize(model, size);
             model.transform.SetParent(parent, false);
             return model;
@@ -679,8 +674,7 @@ namespace Devside.FishingIdle.Game
             // Le poisson qui jaillit est la VRAIE espèce attrapée quand son modèle
             // custom est déposé — la capture d'un léviathan doit se voir !
             var fish = new GameObject("CaughtFish").transform;
-            var model = SpawnFishModel(speciesId,
-                ArtLibrary.SmallFish[Random.Range(0, ArtLibrary.SmallFish.Length)], 0.42f, fish);
+            var model = SpawnFishModel(speciesId, 0.42f, fish);
             if (model == null)
             {
                 var body = GameObject.CreatePrimitive(PrimitiveType.Sphere).transform;
