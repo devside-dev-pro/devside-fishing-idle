@@ -24,7 +24,7 @@ namespace Devside.FishingIdle.Game
         static readonly Color WaterDeep = new Color(0.05f, 0.15f, 0.35f);
         static readonly Color RodColor = new Color(0.25f, 0.18f, 0.12f);
         static readonly Color LineColor = new Color(0.9f, 0.95f, 1f);
-        static readonly Color RippleColor = new Color(0.85f, 0.95f, 1f);
+        static readonly Color BobberRed = new Color(0.85f, 0.2f, 0.15f);
         static readonly Color FallbackHull = new Color(0.4f, 0.25f, 0.15f);
         static readonly Color FallbackDeck = new Color(0.72f, 0.5f, 0.3f);
         static readonly Color FallbackProp = new Color(0.72f, 0.55f, 0.28f);
@@ -65,7 +65,7 @@ namespace Devside.FishingIdle.Game
             public Transform root;
             public Transform rod;
             public LineRenderer line;
-            public Transform ripple;
+            public Transform bobber;
         }
 
         class AmbientFish
@@ -135,6 +135,13 @@ namespace Devside.FishingIdle.Game
             float t = Time.time;
 
             EnsureShip(state);
+
+            // Ceinture-bretelles : la coque doit vivre sous le BoatRoot — si l'attache
+            // a raté (ordre d'initialisation), le bateau resterait à l'origine pendant
+            // que la caméra, l'écume et la zone naviguent sans lui.
+            if (BoatController.Instance != null && _boat != null
+                && _boat.parent != BoatController.Instance.Root)
+                _boat.SetParent(BoatController.Instance.Root, false);
 
             for (int tier = 0; tier < 3; tier++)
                 SyncCrew(_crew[tier], _slots[tier], state.ProducerCount(TierProducerIds[tier]), tier);
@@ -347,22 +354,36 @@ namespace Devside.FishingIdle.Game
         {
             var result = new Vector3[fractions.Length];
             for (int i = 0; i < fractions.Length; i++)
-            {
-                float x = fractions[i].x * _shipLength;
-                float z = fractions[i].y * _shipWidth;
-                result[i] = new Vector3(x, DeckHeightAt(x, z), z);
-            }
+                result[i] = ResolveDeckPoint(fractions[i].x * _shipLength, fractions[i].y * _shipWidth);
             return result;
         }
 
         /// <summary>
-        /// Hauteur du pont à un point (x, z) local : raycast vertical sur les colliders du
-        /// navire, en gardant la surface la plus basse au-dessus de la flottaison (les
-        /// voiles et mâts, plus hauts, sont ignorés).
+        /// Point de pont SÛR : les bounds du navire dépassent le pont réel (ancre sur
+        /// la coque, beaupré...), donc un point calculé en fractions des bounds peut
+        /// tomber dans l'eau (bug vécu : l'équipage à côté du bateau). On ramène le
+        /// point vers le centre par paliers jusqu'à ce que le raycast touche du pont.
         /// </summary>
-        float DeckHeightAt(float x, float z)
+        Vector3 ResolveDeckPoint(float x, float z)
         {
-            if (_ship == null) return 0.74f;
+            for (int step = 0; step < 6; step++)
+            {
+                float k = 1f - step * 0.15f;
+                if (TryDeckHeight(x * k, z * k, out float y))
+                    return new Vector3(x * k, y, z * k);
+            }
+            return new Vector3(x * 0.4f, 0.74f, z * 0.4f);
+        }
+
+        /// <summary>
+        /// Hauteur du pont à un point (x, z) local : raycast vertical sur les colliders
+        /// du navire, en gardant la surface la plus basse au-dessus de la flottaison
+        /// (les voiles et mâts, plus hauts, sont ignorés). False si rien sous le point.
+        /// </summary>
+        bool TryDeckHeight(float x, float z, out float height)
+        {
+            height = 0.74f;
+            if (_ship == null) return true; // navire de secours : pont plat connu
             var hits = Physics.RaycastAll(new Vector3(x, 8f, z), Vector3.down, 16f);
             float best = float.MaxValue;
             foreach (var hit in hits)
@@ -371,7 +392,9 @@ namespace Devside.FishingIdle.Game
                 if (hit.point.y < 0.05f) continue;
                 if (hit.point.y < best) best = hit.point.y;
             }
-            return best < float.MaxValue ? best + 0.02f : 0.74f;
+            if (best >= float.MaxValue) return false;
+            height = best + 0.02f;
+            return true;
         }
 
         void BuildDeckProps()
@@ -403,11 +426,9 @@ namespace Devside.FishingIdle.Game
         GameObject SpawnOnDeck(string[] paths, float fx, float fz, float targetSize,
             bool normalizeHeight = false, string[] characterFragments = null)
         {
-            float x = fx * _shipLength;
-            float z = fz * _shipWidth;
             var holder = new GameObject("Prop").transform;
             holder.SetParent(_boat, false);
-            holder.localPosition = new Vector3(x, DeckHeightAt(x, z), z);
+            holder.localPosition = ResolveDeckPoint(fx * _shipLength, fz * _shipWidth);
 
             var model = characterFragments != null
                 ? ArtLibrary.SpawnCustomCharacter(holder, characterFragments)
@@ -490,7 +511,7 @@ namespace Devside.FishingIdle.Game
                 if (crew[i].root.gameObject.activeSelf != active)
                 {
                     crew[i].root.gameObject.SetActive(active);
-                    crew[i].ripple.gameObject.SetActive(active);
+                    crew[i].bobber.gameObject.SetActive(active);
                 }
             }
         }
@@ -536,13 +557,22 @@ namespace Devside.FishingIdle.Game
             line.positionCount = 2;
             line.useWorldSpace = true;
 
-            var ripple = GameObject.CreatePrimitive(PrimitiveType.Cylinder).transform;
-            ripple.name = "Ripple";
-            ripple.localScale = new Vector3(0.3f, 0.006f, 0.3f);
-            ripple.GetComponent<Renderer>().material = Mat(RippleColor);
-            Destroy(ripple.GetComponent<Collider>());
+            // Petit bouchon de pêche rouge et blanc au bout de la ligne — fini les
+            // gros ronds blancs qui pulsaient sur l'eau.
+            var bobber = new GameObject("Bobber").transform;
+            var bottom = GameObject.CreatePrimitive(PrimitiveType.Sphere).transform;
+            bottom.SetParent(bobber, false);
+            bottom.localScale = Vector3.one * 0.09f;
+            bottom.GetComponent<Renderer>().material = Mat(Color.white);
+            Destroy(bottom.GetComponent<Collider>());
+            var top = GameObject.CreatePrimitive(PrimitiveType.Sphere).transform;
+            top.SetParent(bobber, false);
+            top.localScale = Vector3.one * 0.075f;
+            top.localPosition = Vector3.up * 0.05f;
+            top.GetComponent<Renderer>().material = Mat(BobberRed);
+            Destroy(top.GetComponent<Collider>());
 
-            return new CrewVisual { root = root, rod = rod, line = line, ripple = ripple };
+            return new CrewVisual { root = root, rod = rod, line = line, bobber = bobber };
         }
 
         void AnimateCrew(List<CrewVisual> crew, float t)
@@ -563,9 +593,9 @@ namespace Devside.FishingIdle.Game
                 visual.line.SetPosition(0, rodTip);
                 visual.line.SetPosition(1, waterPoint);
 
-                float pulse = 0.24f + 0.1f * Mathf.Sin(t * 2.5f + i * 2.3f);
-                visual.ripple.position = waterPoint;
-                visual.ripple.localScale = new Vector3(pulse, 0.006f, pulse);
+                // Le bouchon flotte et tressaille doucement au bout de la ligne.
+                float bob = Mathf.Sin(t * 2.5f + i * 2.3f) * 0.035f;
+                visual.bobber.position = waterPoint + Vector3.up * (0.02f + bob);
             }
         }
 
