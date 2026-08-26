@@ -259,6 +259,13 @@ namespace Devside.FishingIdle.Game
         static Material GetOrCreateUrpMaterial(Material source, Shader lit, Texture2D fallbackTexture)
         {
             if (source == null) return null;
+            // Les matériaux glTFast (assets custom .glb) sont déjà corrects pour URP
+            // et rangent leur texture sous baseColorTexture — pas _MainTex : les
+            // « convertir » les blanchirait (bug vécu : tout l'équipage custom sorti
+            // blanc). On n'y touche pas.
+            if (source.shader != null
+                && source.shader.name.IndexOf("gltf", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return source;
             if (source.shader != null && source.shader.name.Contains("Universal") && source.mainTexture != null)
                 return source;
             if (FixedMaterials.TryGetValue(source, out var cached)) return cached;

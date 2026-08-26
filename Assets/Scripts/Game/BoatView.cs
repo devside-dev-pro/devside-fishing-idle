@@ -136,6 +136,13 @@ namespace Devside.FishingIdle.Game
 
             EnsureShip(state);
 
+            // Ceinture-bretelles : la coque doit vivre sous le BoatRoot — si l'attache
+            // a raté (ordre d'initialisation), le bateau resterait à l'origine pendant
+            // que la caméra, l'écume et la zone naviguent sans lui.
+            if (BoatController.Instance != null && _boat != null
+                && _boat.parent != BoatController.Instance.Root)
+                _boat.SetParent(BoatController.Instance.Root, false);
+
             for (int tier = 0; tier < 3; tier++)
                 SyncCrew(_crew[tier], _slots[tier], state.ProducerCount(TierProducerIds[tier]), tier);
 
