@@ -37,10 +37,14 @@ le 26/08/2026 — ids de jobs consignés dans le manifeste de session.
   giant_squid, abyssal_shark, kraken_spawn, leviathan.
 - `Art/Custom/Props/` : fish_barrel, crate, cutting_station, fillet_station,
   fishing_rod.
+- `Art/Custom/Characters/` : personnages custom **déjà produits** (avec
+  animations) et déposés par Mathieu — **ne pas les regénérer**. Les fichiers
+  sont nommés librement (ex. `char_capitaine_x.glb`) : le code les retrouve par
+  fragments de nom (`ArtLibrary.SpawnCustomCharacter` — capitaine / mousse ou
+  marin / pecheur_pro / vieux) et prend la dernière version par ordre
+  alphabétique en cas de doublon.
 - À venir éventuellement : `Art/Custom/Ships/` (barque, chalutier_moyen,
   chalutier_grand — vues 3/4 déjà générées côté images).
-- **Pas de personnages custom** (décision du 26/08) : les personnages Quaternius
-  du repo sont riggés et animés — on les garde tels quels pour l'équipage.
 
 Côté code, `ArtLibrary.CustomFish(id)` / `CustomProp(nom)` + `SpawnFirst`
 (custom d'abord, pack CC0 en repli) : le jeu reste jouable sans aucun asset

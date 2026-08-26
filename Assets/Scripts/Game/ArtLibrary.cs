@@ -120,6 +120,36 @@ namespace Devside.FishingIdle.Game
             return null;
         }
 
+        static GameObject[] _customCharacters;
+
+        /// <summary>Tous les personnages custom déposés (cache du LoadAll).</summary>
+        static GameObject[] CustomCharacters
+            => _customCharacters ?? (_customCharacters = Resources.LoadAll<GameObject>("Art/Custom/Characters"));
+
+        /// <summary>
+        /// Personnage custom retrouvé par fragments de nom (essayés dans l'ordre), car
+        /// les fichiers de Art/Custom/Characters sont nommés librement (ex.
+        /// char_capitaine_x.glb). En cas de versions multiples, prend la dernière par
+        /// ordre alphabétique (les v2 remplacent les v1). Null si aucun ne correspond.
+        /// </summary>
+        public static GameObject SpawnCustomCharacter(Transform parent, params string[] nameFragments)
+        {
+            for (int f = 0; f < nameFragments.Length; f++)
+            {
+                GameObject best = null;
+                foreach (var prefab in CustomCharacters)
+                {
+                    if (!prefab.name.ToLowerInvariant().Contains(nameFragments[f])) continue;
+                    if (best == null || string.CompareOrdinal(prefab.name, best.name) > 0) best = prefab;
+                }
+                if (best == null) continue;
+                var instance = Object.Instantiate(best, parent);
+                FixMaterials(instance);
+                return instance;
+            }
+            return null;
+        }
+
         /// <summary>Bounds monde combinées de tous les renderers (zéro si aucun).</summary>
         public static Bounds MeasureBounds(GameObject root)
         {

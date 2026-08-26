@@ -51,6 +51,15 @@ namespace Devside.FishingIdle.Game
         static readonly string[] TierProducerIds = { "fisherman_t1", "fisherman_t2", "fisherman_t3" };
         static readonly string[] TierModelPaths = { ArtLibrary.CrewT1, ArtLibrary.CrewT2, ArtLibrary.CrewT3 };
 
+        // Fragments de noms des personnages custom par tier (fichiers de
+        // Art/Custom/Characters nommés librement, ex. char_marin_pecheur_v2).
+        static readonly string[][] TierCustomFragments =
+        {
+            new[] { "mousse", "marin" },
+            new[] { "pecheur_pro" },
+            new[] { "vieux" },
+        };
+
         class CrewVisual
         {
             public Transform root;
@@ -128,7 +137,7 @@ namespace Devside.FishingIdle.Game
             EnsureShip(state);
 
             for (int tier = 0; tier < 3; tier++)
-                SyncCrew(_crew[tier], _slots[tier], state.ProducerCount(TierProducerIds[tier]), TierModelPaths[tier]);
+                SyncCrew(_crew[tier], _slots[tier], state.ProducerCount(TierProducerIds[tier]), tier);
 
             if (_cuttingStation != null) _cuttingStation.SetActive(state.ProducerCount("cutting_station") > 0);
             if (_filletStation != null) _filletStation.SetActive(state.ProducerCount("fillet_station") > 0);
@@ -355,7 +364,8 @@ namespace Devside.FishingIdle.Game
         void BuildDeckProps()
         {
             // Le capitaine (le joueur !) est toujours à bord, près de la barre.
-            SpawnOnDeck(new[] { ArtLibrary.Captain }, -0.28f, 0.05f, 0.72f, normalizeHeight: true);
+            SpawnOnDeck(new[] { ArtLibrary.Captain }, -0.28f, 0.05f, 0.72f, normalizeHeight: true,
+                characterFragments: new[] { "capitaine" });
 
             // Postes de transformation : version custom générée si déposée, pack sinon.
             _cuttingStation = SpawnOnDeck(
@@ -377,7 +387,8 @@ namespace Devside.FishingIdle.Game
             }
         }
 
-        GameObject SpawnOnDeck(string[] paths, float fx, float fz, float targetSize, bool normalizeHeight = false)
+        GameObject SpawnOnDeck(string[] paths, float fx, float fz, float targetSize,
+            bool normalizeHeight = false, string[] characterFragments = null)
         {
             float x = fx * _shipLength;
             float z = fz * _shipWidth;
@@ -385,7 +396,10 @@ namespace Devside.FishingIdle.Game
             holder.SetParent(_boat, false);
             holder.localPosition = new Vector3(x, DeckHeightAt(x, z), z);
 
-            var model = ArtLibrary.SpawnFirst(holder, paths);
+            var model = characterFragments != null
+                ? ArtLibrary.SpawnCustomCharacter(holder, characterFragments)
+                : null;
+            if (model == null) model = ArtLibrary.SpawnFirst(holder, paths);
             if (model == null)
             {
                 Block("Fallback", holder, Vector3.up * (targetSize * 0.5f), Vector3.one * targetSize, FallbackProp);
@@ -452,11 +466,11 @@ namespace Devside.FishingIdle.Game
 
         // ---------- Équipage ----------
 
-        void SyncCrew(List<CrewVisual> crew, Vector3[] slots, int owned, string modelPath)
+        void SyncCrew(List<CrewVisual> crew, Vector3[] slots, int owned, int tier)
         {
             int wanted = Mathf.Min(owned, slots.Length);
             while (crew.Count < wanted)
-                crew.Add(BuildCrewMember(slots[crew.Count], modelPath));
+                crew.Add(BuildCrewMember(slots[crew.Count], tier));
             for (int i = 0; i < crew.Count; i++)
             {
                 bool active = i < wanted;
@@ -468,7 +482,7 @@ namespace Devside.FishingIdle.Game
             }
         }
 
-        CrewVisual BuildCrewMember(Vector3 localPosition, string modelPath)
+        CrewVisual BuildCrewMember(Vector3 localPosition, int tier)
         {
             var root = new GameObject("Crew").transform;
             root.SetParent(_boat, false);
@@ -479,7 +493,9 @@ namespace Devside.FishingIdle.Game
             root.localRotation = Quaternion.Euler(0f, yaw, 0f);
 
             // Normalisé hors hiérarchie (le bateau peut être en plein roulis), puis re-parenté.
-            var model = ArtLibrary.Spawn(modelPath, null);
+            // Personnage custom du tier si déposé, modèle Quaternius sinon.
+            var model = ArtLibrary.SpawnCustomCharacter(null, TierCustomFragments[tier]);
+            if (model == null) model = ArtLibrary.SpawnQuiet(TierModelPaths[tier]);
             if (model != null)
             {
                 ArtLibrary.NormalizeToHeight(model, 0.6f);
