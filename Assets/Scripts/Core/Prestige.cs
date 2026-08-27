@@ -36,6 +36,13 @@ namespace Devside.FishingIdle.Core
                 lastSeenUnixSeconds = state.lastSeenUnixSeconds,
                 // Le Poissodex est permanent : les découvertes survivent au reset.
                 discoveredSpecies = state.discoveredSpecies,
+                // L'équipement aussi : ce qu'on a trouvé et porté ne se rejoue pas.
+                equipment = state.equipment,
+                equippedBySlot = state.equippedBySlot,
+                // Les perles sont une monnaie premium : un reset ne les brûle jamais.
+                pearls = state.pearls,
+                boosts = state.boosts,
+                adCooldowns = state.adCooldowns,
             };
             state.CopyFrom(fresh);
             return gained;

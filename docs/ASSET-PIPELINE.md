@@ -89,6 +89,31 @@ Côté code, `ArtLibrary.CustomFish(id)` / `CustomProp(nom)` + `SpawnFirst`
 custom. Orientation : les poissons Meshy générés de profil ont le nez en **+x**
 (les poissons du pack l'ont en +z) — `BoatView.SpawnFishModel` fait la rotation.
 
+## Kit d'icônes UI 2D (recette validée)
+
+Les icônes de l'interface (`Assets/Resources/UI/Icons/*.png`, chargées par
+`UiKit.Icon`) sont générées par **planches**, pas une par une : c'est dix fois
+moins cher et le style reste cohérent d'une icône à l'autre.
+
+1. **Planche** — `nano_banana_pro`, format 1:1, une grille **3×3** (ou 2×2)
+   décrite explicitement dans le prompt, sujets listés « in reading order »,
+   *plain flat light gray background*, marge généreuse entre les cellules, et le
+   gabarit de style : *modern casual mobile game art style like a polished idle
+   tycoon game, chunky rounded 3D shapes, glossy candy colors, saturated palette,
+   soft gradient shading, clean subtle dark outline, soft drop shadow under each
+   icon, no text, no labels, no frames around cells*.
+2. **Découpe** — dans le sandbox (Pillow + numpy) : couleur de fond = médiane des
+   quatre coins, alpha = `clip((distance − 28) / 25)` (le seuil coupe l'ombre
+   portée sans ronger les icônes), découpe en cellules égales, `getbbox()` sur le
+   canal alpha, recadrage carré centré avec 6 % de marge, sortie en 256×256.
+3. **Livraison** — zip structuré `UI/Icons/<nom>.png`, à dézipper dans
+   `Assets/Resources/`. Une icône absente n'est jamais une erreur : `UiKit.Icon`
+   renvoie null et l'emplacement se masque.
+
+Première fournée (27/08/2026) : 58 icônes en 7 planches — ressources et monnaies,
+améliorations, équipement, coffres et gemmes, icônes système, et les 13 espèces du
+Poissodex. Coût total : moins de 15 crédits.
+
 ## Contraintes d'environnement (sessions distantes)
 
 - Le CDN Higgsfield (cloudfront) est **bloqué** par le proxy des sessions Claude :

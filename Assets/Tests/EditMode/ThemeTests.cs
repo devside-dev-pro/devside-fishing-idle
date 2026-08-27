@@ -26,6 +26,34 @@ namespace Devside.FishingIdle.Core.Tests
             foreach (var species in config.species)
                 Assert.That(GameTheme.Species(species.id), Is.Not.EqualTo(species.id),
                     $"libellé manquant pour l'espèce {species.id}");
+
+            foreach (var piece in config.equipment)
+            {
+                Assert.That(GameTheme.EquipmentName(piece.id), Is.Not.EqualTo(piece.id),
+                    $"libellé manquant pour l'équipement {piece.id}");
+                Assert.That(GameTheme.EquipmentIcon(piece.id), Is.Not.Null,
+                    $"icône manquante pour l'équipement {piece.id}");
+            }
+
+            foreach (var chest in config.chests)
+            {
+                Assert.That(GameTheme.ChestName(chest.id), Is.Not.EqualTo(chest.id),
+                    $"libellé manquant pour le coffre {chest.id}");
+                Assert.That(GameTheme.EquipmentIcon(chest.id), Is.Not.Null,
+                    $"icône manquante pour le coffre {chest.id}");
+            }
+
+            foreach (var boost in config.boosts)
+                Assert.That(GameTheme.BoostName(boost.id), Is.Not.EqualTo(boost.id),
+                    $"libellé manquant pour le boost {boost.id}");
+
+            foreach (var ad in config.rewardedAds)
+                Assert.That(GameTheme.AdName(ad.id), Is.Not.EqualTo(ad.id),
+                    $"libellé manquant pour la pub {ad.id}");
+
+            foreach (var pack in config.pearlPacks)
+                Assert.That(GameTheme.PackName(pack.id), Is.Not.EqualTo(pack.id),
+                    $"libellé manquant pour le pack {pack.id}");
         }
     }
 }

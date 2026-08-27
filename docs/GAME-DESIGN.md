@@ -189,6 +189,29 @@ la 6–8ᵉ heure, et un joueur qui prestige 3 fois avant d'avoir tout vu.
   (2 découpés → 1 filet), donc transformer augmente la capacité hors-ligne effective.
   `offlineCapSeconds` (72 h) n'est qu'un garde-fou de calcul, pas un levier de gameplay.
 - Prestige : `points = ⌊√(richesse cumulée / 25 M)⌋`, +4 % de production par point (v2).
+- **Équipement du capitaine** (v0.5) : quatre emplacements — **canne** (pêche à la main),
+  **moulinet** (production), **appât** (prix de vente), **tenue** (cale) — et une pièce
+  portée par emplacement. On ne possède pas des objets distincts mais des **pièces**
+  qui montent de niveau en accumulant des doublons (`2 × niveau` exemplaires pour le
+  suivant, jusqu'au niveau 10) : la sauvegarde reste minuscule et un doublon n'est
+  jamais un déchet. Les bonus sont **additifs** entre pièces (quatre pièces à +10 %
+  font ×1,4, pas ×1,46) — plus lisible pour le joueur, plus facile à équilibrer, et
+  volontairement modeste : le cœur de l'économie reste les producteurs.
+  Les pièces viennent des **coffres** (bois 5 k, argent 40 k, or 300 k pièces), dont
+  chaque palier a son profil de rareté ; le tirage est un roll ∈ [0,1[ injecté par
+  l'hôte, comme les espèces. La première pièce trouvée pour un emplacement vide est
+  portée d'office. La collection **survit au prestige**, comme le Poissodex.
+- **Les perles et la boutique** (v0.6) : la monnaie premium existe en jeu. Elle se
+  gagne lentement mais réellement sans payer — **+2 perles par découverte du
+  Poissodex** et par les pubs récompensées — et elle survit au prestige. La boutique
+  suit l'ordre du business plan : d'abord le **gratuit** (pubs, toujours opt-in,
+  jamais d'interstitiel), puis les **boosts** (Coup de filet ×2 pêche 4 h, cumul
+  plafonné à 8 h ; Vent dans les voiles +50 % de vitesse 10 min), les **coffres en
+  perles** (mêmes tables de rareté que ceux payés en pièces), et enfin les **packs**.
+  Le Core ne connaît ni SDK ni facturation : `Shop.ClaimAdReward` s'applique APRÈS
+  qu'une pub a été vue, `Shop.GrantPack` APRÈS validation d'un achat — brancher Unity
+  Ads ou Unity IAP ne touchera qu'un point d'appel côté hôte. Les boutons de packs
+  restent **inactifs** tant que la facturation n'existe pas : rien à simuler.
 
 **Équilibrage v2** (leçon du premier playtest : tout le contenu consommé en minutes) :
 - La canne progresse moins vite que son coût (×1,5 de pêche pour ×2,2 de prix) — le clic

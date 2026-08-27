@@ -29,6 +29,26 @@ namespace Devside.FishingIdle.Core
         public int level;
     }
 
+    /// <summary>Un compte à rebours nommé (boost en cours, délai de rechargement d'une pub).</summary>
+    [Serializable]
+    public class TimerState
+    {
+        public string id;
+        public double secondsLeft;
+    }
+
+    /// <summary>
+    /// Une pièce d'équipement de la collection : son niveau (0 = pas encore trouvée) et
+    /// les exemplaires en réserve pour la prochaine fusion. Voir Core/Equipment.
+    /// </summary>
+    [Serializable]
+    public class EquipmentPieceState
+    {
+        public string id;
+        public int level;
+        public int copies;
+    }
+
     /// <summary>
     /// État complet d'une partie. POCO sérialisable (champs publics, listes) pour rester
     /// compatible avec JsonUtility côté hôte, sans dépendre d'Unity ici.
@@ -43,6 +63,12 @@ namespace Devside.FishingIdle.Core
         public double cutFish;
         public double fillet;
 
+        /// <summary>
+        /// Perles : la monnaie premium. Elles se gagnent lentement en jouant (découvertes
+        /// du Poissodex, pubs récompensées) ou s'achètent, et survivent au prestige.
+        /// </summary>
+        public double pearls;
+
         /// <summary>Argent gagné depuis le tout début (ne baisse jamais) — base du prestige.</summary>
         public double lifetimeMoney;
         public int prestigePoints;
@@ -53,6 +79,21 @@ namespace Devside.FishingIdle.Core
 
         /// <summary>Poissodex : ids des espèces découvertes. Permanent — survit au prestige.</summary>
         public List<string> discoveredSpecies = new List<string>();
+
+        /// <summary>Collection d'équipement. Permanente : elle survit au prestige.</summary>
+        public List<EquipmentPieceState> equipment = new List<EquipmentPieceState>();
+
+        /// <summary>Boosts en cours (id → secondes restantes).</summary>
+        public List<TimerState> boosts = new List<TimerState>();
+
+        /// <summary>Délais de rechargement des pubs récompensées (id → secondes restantes).</summary>
+        public List<TimerState> adCooldowns = new List<TimerState>();
+
+        /// <summary>
+        /// Pièce portée à chaque emplacement (index = EquipmentSlot, chaîne vide = aucune).
+        /// Liste plutôt que tableau : JsonUtility sérialise mal les tableaux redimensionnés.
+        /// </summary>
+        public List<string> equippedBySlot = new List<string>();
 
         /// <summary>Stock total de poisson à bord — ce que la cale doit contenir.</summary>
         public double TotalFishStock => rawFish + cutFish + fillet;
@@ -129,11 +170,53 @@ namespace Devside.FishingIdle.Core
             return created;
         }
 
+        /// <summary>Un compte à rebours de la liste donnée, créé à la volée si <paramref name="create"/>.</summary>
+        public TimerState Timer(List<TimerState> timers, string id, bool create)
+        {
+            for (int i = 0; i < timers.Count; i++)
+                if (timers[i].id == id)
+                    return timers[i];
+            if (!create) return null;
+            var created = new TimerState { id = id, secondsLeft = 0 };
+            timers.Add(created);
+            return created;
+        }
+
+        /// <summary>La pièce d'équipement, créée à la volée si <paramref name="create"/>.</summary>
+        public EquipmentPieceState EquipmentPiece(string equipmentId, bool create)
+        {
+            for (int i = 0; i < equipment.Count; i++)
+                if (equipment[i].id == equipmentId)
+                    return equipment[i];
+            if (!create) return null;
+            var created = new EquipmentPieceState { id = equipmentId, level = 0, copies = 0 };
+            equipment.Add(created);
+            return created;
+        }
+
+        /// <summary>Id de la pièce portée à cet emplacement, ou null.</summary>
+        public string EquippedId(EquipmentSlot slot)
+        {
+            int index = (int)slot;
+            if (index < 0 || index >= equippedBySlot.Count) return null;
+            string id = equippedBySlot[index];
+            return string.IsNullOrEmpty(id) ? null : id;
+        }
+
+        /// <summary>Porte (ou retire, avec null) une pièce à cet emplacement.</summary>
+        public void SetEquipped(EquipmentSlot slot, string equipmentId)
+        {
+            int index = (int)slot;
+            while (equippedBySlot.Count <= index) equippedBySlot.Add(string.Empty);
+            equippedBySlot[index] = equipmentId ?? string.Empty;
+        }
+
         /// <summary>Remplace tout l'état par celui de <paramref name="other"/> (même référence conservée).</summary>
         public void CopyFrom(GameState other)
         {
             version = other.version;
             money = other.money;
+            pearls = other.pearls;
             rawFish = other.rawFish;
             cutFish = other.cutFish;
             fillet = other.fillet;
@@ -143,6 +226,10 @@ namespace Devside.FishingIdle.Core
             producers = other.producers;
             upgrades = other.upgrades;
             discoveredSpecies = other.discoveredSpecies;
+            equipment = other.equipment;
+            equippedBySlot = other.equippedBySlot;
+            boosts = other.boosts;
+            adCooldowns = other.adCooldowns;
             lastSeenUnixSeconds = other.lastSeenUnixSeconds;
             currentZone = other.currentZone;
         }

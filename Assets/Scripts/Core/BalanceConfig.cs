@@ -90,6 +90,17 @@ namespace Devside.FishingIdle.Core
         public List<ProducerDef> producers = new List<ProducerDef>();
         public List<UpgradeDef> upgrades = new List<UpgradeDef>();
         public List<SpeciesDef> species = new List<SpeciesDef>();
+        public List<EquipmentDef> equipment = new List<EquipmentDef>();
+        public List<ChestDef> chests = new List<ChestDef>();
+        public List<BoostDef> boosts = new List<BoostDef>();
+        public List<RewardedAdDef> rewardedAds = new List<RewardedAdDef>();
+        public List<PearlPackDef> pearlPacks = new List<PearlPackDef>();
+
+        /// <summary>
+        /// Perles données à chaque nouvelle espèce du Poissodex. C'est le flux premium
+        /// du joueur gratuit : lent, mais réel — 13 espèces = 26 perles sur une partie.
+        /// </summary>
+        public double pearlsPerDiscovery = 2;
 
         public ProducerDef Producer(string id)
         {
@@ -209,7 +220,89 @@ namespace Devside.FishingIdle.Core
             config.species.Add(new SpeciesDef { id = "kraken_spawn", minDepthLevel = 3, weight = 6, valueMultiplier = 30, discoveryBonus = 1.08 });
             config.species.Add(new SpeciesDef { id = "leviathan", minDepthLevel = 3, weight = 1, valueMultiplier = 60, discoveryBonus = 1.12 });
 
+            // Équipement du capitaine : quatre emplacements, une pièce portée par
+            // emplacement, et des bonus ADDITIFS volontairement modestes (le cœur de
+            // l'économie reste les producteurs). Chaque emplacement a sa spécialité,
+            // pour qu'un choix de tenue se lise en une phrase.
+            AddEquipment(config, "rod_bamboo", EquipmentSlot.Rod, Rarity.Common, EquipmentEffect.ManualCatch, 0.02);
+            AddEquipment(config, "rod_carbon", EquipmentSlot.Rod, Rarity.Rare, EquipmentEffect.ManualCatch, 0.04);
+            AddEquipment(config, "rod_abyssal", EquipmentSlot.Rod, Rarity.Legendary, EquipmentEffect.ManualCatch, 0.12);
+            AddEquipment(config, "reel_basic", EquipmentSlot.Reel, Rarity.Common, EquipmentEffect.ProducerRate, 0.02);
+            AddEquipment(config, "reel_precision", EquipmentSlot.Reel, Rarity.Rare, EquipmentEffect.ProducerRate, 0.04);
+            AddEquipment(config, "reel_storm", EquipmentSlot.Reel, Rarity.Epic, EquipmentEffect.ProducerRate, 0.07);
+            AddEquipment(config, "bait_worm", EquipmentSlot.Bait, Rarity.Common, EquipmentEffect.SellPrice, 0.02);
+            AddEquipment(config, "bait_lure", EquipmentSlot.Bait, Rarity.Rare, EquipmentEffect.SellPrice, 0.04);
+            AddEquipment(config, "bait_glow", EquipmentSlot.Bait, Rarity.Epic, EquipmentEffect.SellPrice, 0.07);
+            AddEquipment(config, "outfit_hat", EquipmentSlot.Outfit, Rarity.Common, EquipmentEffect.HoldCapacity, 0.02);
+            AddEquipment(config, "outfit_raincoat", EquipmentSlot.Outfit, Rarity.Rare, EquipmentEffect.HoldCapacity, 0.04);
+            AddEquipment(config, "outfit_captain", EquipmentSlot.Outfit, Rarity.Legendary, EquipmentEffect.HoldCapacity, 0.12);
+
+            // Coffres : trois paliers de prix, trois profils de chance. Le coffre en bois
+            // est le tout-venant qui fait monter les pièces communes par doublons ; le
+            // coffre d'or est le rêve tardif (une chance sur dix de légendaire).
+            config.chests.Add(new ChestDef
+            {
+                id = "chest_wood", cost = 5_000, pearlCost = 20,
+                rarityWeights = new double[] { 75, 22, 3, 0 },
+            });
+            config.chests.Add(new ChestDef
+            {
+                id = "chest_silver", cost = 40_000, pearlCost = 60,
+                rarityWeights = new double[] { 40, 45, 14, 1 },
+            });
+            config.chests.Add(new ChestDef
+            {
+                id = "chest_gold", cost = 300_000, pearlCost = 200,
+                rarityWeights = new double[] { 10, 40, 40, 10 },
+            });
+
+            // Boutique. Deux boosts seulement : un qui accélère la pêche, un qui
+            // raccourcit les trajets — au-delà, le joueur ne sait plus ce qu'il achète.
+            // Le cumul est plafonné pour qu'on ne puisse pas empiler une journée de ×2.
+            config.boosts.Add(new BoostDef
+            {
+                id = "boost_net", kind = BoostKind.Fishing, multiplier = 2,
+                durationSeconds = 4 * 3600, maxStackSeconds = 8 * 3600, pearlCost = 50,
+            });
+            config.boosts.Add(new BoostDef
+            {
+                id = "boost_wind", kind = BoostKind.SailSpeed, multiplier = 1.5,
+                durationSeconds = 10 * 60, maxStackSeconds = 30 * 60, pearlCost = 15,
+            });
+
+            // Pubs récompensées : toujours opt-in, jamais d'interstitiel (business plan).
+            // Les délais de rechargement sont des valeurs de départ, à caler en beta.
+            config.rewardedAds.Add(new RewardedAdDef
+            {
+                id = "ad_net", boostId = "boost_net", cooldownSeconds = 30 * 60,
+            });
+            config.rewardedAds.Add(new RewardedAdDef
+            {
+                id = "ad_wind", boostId = "boost_wind", cooldownSeconds = 15 * 60,
+            });
+            config.rewardedAds.Add(new RewardedAdDef
+            {
+                id = "ad_pearl", pearls = 5, cooldownSeconds = 3600,
+            });
+
+            // Packs de perles : les prix affichés viendront du store à l'exécution ;
+            // ceux-ci ne servent qu'à la maquette (docs/BUSINESS-PLAN.md).
+            config.pearlPacks.Add(new PearlPackDef { id = "pack_s", pearls = 100, priceLabel = "4,99 €" });
+            config.pearlPacks.Add(new PearlPackDef { id = "pack_m", pearls = 220, bonusPearls = 30, priceLabel = "9,99 €" });
+            config.pearlPacks.Add(new PearlPackDef { id = "pack_l", pearls = 480, bonusPearls = 120, priceLabel = "19,99 €" });
+            config.pearlPacks.Add(new PearlPackDef { id = "pack_xl", pearls = 1300, bonusPearls = 500, priceLabel = "49,99 €" });
+
             return config;
+        }
+
+        static void AddEquipment(BalanceConfig config, string id, EquipmentSlot slot,
+            Rarity rarity, EquipmentEffect effect, double bonusPerLevel)
+        {
+            config.equipment.Add(new EquipmentDef
+            {
+                id = id, slot = slot, rarity = rarity, effect = effect,
+                bonusPerLevel = bonusPerLevel, maxLevel = 10,
+            });
         }
     }
 }

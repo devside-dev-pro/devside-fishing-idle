@@ -8,19 +8,25 @@ namespace Devside.FishingIdle.Core
         public static double ManualCatch(BalanceConfig config, GameState state)
             => Prestige.ProductionMultiplier(config, state)
                * Catching.CollectionBonus(config, state)
-               * FromUpgrades(config, state, UpgradeEffect.ManualCatchMultiplier, null);
+               * FromUpgrades(config, state, UpgradeEffect.ManualCatchMultiplier, null)
+               * Equipment.Bonus(config, state, EquipmentEffect.ManualCatch)
+               * Shop.BoostMultiplier(config, state, BoostKind.Fishing);
 
         public static double ProducerRate(BalanceConfig config, GameState state, string producerId)
             => Prestige.ProductionMultiplier(config, state)
                * Catching.CollectionBonus(config, state)
-               * FromUpgrades(config, state, UpgradeEffect.ProducerRateMultiplier, producerId);
+               * FromUpgrades(config, state, UpgradeEffect.ProducerRateMultiplier, producerId)
+               * Equipment.Bonus(config, state, EquipmentEffect.ProducerRate)
+               * Shop.BoostMultiplier(config, state, BoostKind.Fishing);
 
         public static double SellPrice(BalanceConfig config, GameState state)
-            => FromUpgrades(config, state, UpgradeEffect.SellPriceMultiplier, null);
+            => FromUpgrades(config, state, UpgradeEffect.SellPriceMultiplier, null)
+               * Equipment.Bonus(config, state, EquipmentEffect.SellPrice);
 
         public static double HoldCapacity(BalanceConfig config, GameState state)
             => config.baseHoldCapacity
-               * FromUpgrades(config, state, UpgradeEffect.HoldCapacityMultiplier, null);
+               * FromUpgrades(config, state, UpgradeEffect.HoldCapacityMultiplier, null)
+               * Equipment.Bonus(config, state, EquipmentEffect.HoldCapacity);
 
         /// <summary>
         /// Produit des multiplicateurs de toutes les améliorations possédées ayant cet effet.
