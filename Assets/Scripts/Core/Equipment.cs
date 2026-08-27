@@ -54,6 +54,10 @@ namespace Devside.FishingIdle.Core
     {
         public string id;
         public double cost;
+
+        /// <summary>Prix en perles du même coffre à la boutique (0 = pas vendu en perles).</summary>
+        public double pearlCost;
+
         public double[] rarityWeights = new double[4];
     }
 
