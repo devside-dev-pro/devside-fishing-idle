@@ -35,6 +35,12 @@ namespace Devside.FishingIdle.Game
         /// <summary>Bleu nacré de la monnaie premium (les perles, jamais des gemmes).</summary>
         static readonly Color PearlBlue = new Color(0.36f, 0.63f, 0.86f);
 
+        /// <summary>Cale pleine : la jauge vire au rouge — « rentre vendre ».</summary>
+        static readonly Color HoldFullColor = new Color(0.90f, 0.35f, 0.28f);
+
+        /// <summary>Fond des puces de ressources : à peine teinté, pour ne pas concurrencer les gélules.</summary>
+        static readonly Color ChipBg = new Color(0.94f, 0.96f, 0.97f);
+
         /// <summary>Bande d'intertitre : teal profond, la couleur de structure du jeu.</summary>
         static readonly Color SectionBg = new Color(0.09f, 0.42f, 0.50f);
 
@@ -72,8 +78,12 @@ namespace Devside.FishingIdle.Game
         double _displayedMoney;
         double _lastMoney;
         double _lastPearls;
-        Text _stocksText;
-        Text _metaText;
+        Text _rawChip;
+        Text _cutChip;
+        Text _filletChip;
+        Text _depthChip;
+        Text _dexChip;
+        Text _prestigeChip;
         Text _holdText;
         Text _offlineText;
         RectTransform _holdFill;
@@ -404,19 +414,26 @@ namespace Devside.FishingIdle.Game
             _pearlText.text = Numbers.Format(state.pearls);
             if (state.pearls > _lastPearls + 0.5) UiTween.Punch(_pearlPill, 0.16f, 0.3f);
             _lastPearls = state.pearls;
-            _stocksText.text =
-                $"{GameTheme.RawLabel} {Numbers.Format(state.rawFish)}   ·   " +
-                $"{GameTheme.CutLabel} {Numbers.Format(state.cutFish)}   ·   " +
-                $"{GameTheme.FilletLabel} {Numbers.Format(state.fillet)}";
-            _metaText.text =
-                $"{GameTheme.DepthLabel} {Catching.DepthLevel(config, state)}   ·   " +
-                $"{GameTheme.CollectionLabel} {state.discoveredSpecies.Count}/{config.species.Count}   ·   " +
-                $"{GameTheme.PrestigeAction} {state.prestigePoints}";
+            _rawChip.text = Numbers.Format(state.rawFish);
+            _cutChip.text = Numbers.Format(state.cutFish);
+            _filletChip.text = Numbers.Format(state.fillet);
+
+            _depthChip.text = Catching.DepthLevel(config, state).ToString();
+            _dexChip.text = $"{state.discoveredSpecies.Count}/{config.species.Count}";
+            _prestigeChip.text = state.prestigePoints.ToString();
 
             double capacity = Multipliers.HoldCapacity(config, state);
             float ratio = capacity <= 0 ? 0f : Mathf.Clamp01((float)(state.TotalFishStock / capacity));
             _holdFill.anchorMax = new Vector2(ratio, 1f);
             _holdText.text = $"{GameTheme.HoldLabel}  {Numbers.Format(state.TotalFishStock)} / {Numbers.Format(capacity)}";
+
+            // La jauge passe à l'orange puis au rouge quand la cale se remplit : c'est
+            // le signal « rentre vendre », il doit se voir sans lire le chiffre.
+            var fill = _holdFill.GetComponent<Image>();
+            if (fill != null)
+                fill.color = ratio >= 0.999f ? HoldFullColor
+                    : ratio > 0.8f ? Color.Lerp(HoldBarColor, HoldFullColor, (ratio - 0.8f) / 0.2f)
+                    : HoldBarColor;
         }
 
         void RefreshRows(BalanceConfig config, GameState state)
@@ -477,111 +494,49 @@ namespace Devside.FishingIdle.Game
             var header = UiKit.CreateCard("Header", canvas, CardBg);
             UiKit.AnchorTop(header.rectTransform, 14, HeaderHeight, 14);
 
-            // Pilule d'argent, façon compteur de cash des jeux mobiles.
-            var moneyPill = UiKit.CreateCard("MoneyPill", header.transform, MoneyGreen, shadow: false);
-            var pillRt = moneyPill.rectTransform;
-            pillRt.anchorMin = new Vector2(0.5f, 1f);
-            pillRt.anchorMax = new Vector2(0.5f, 1f);
-            pillRt.pivot = new Vector2(0.5f, 1f);
-            pillRt.anchoredPosition = new Vector2(0f, -14f);
-            pillRt.sizeDelta = new Vector2(540f, 96f);
+            // ---- Rangée 1 : les deux monnaies, chacune dans sa gélule ----
+            // Les pièces sont la monnaie de tous les instants : gélule large, au centre.
+            _moneyPill = BuildCurrencyPill(header.transform, MoneyGreen, "coin", 56, out _moneyText,
+                new Vector2(0.5f, 1f), new Vector2(0f, -16f), new Vector2(500f, 100f));
 
-            var coinIcon = UiKit.Icon("coin");
-            if (coinIcon != null)
-            {
-                var icon = UiKit.CreateRect("Coin", moneyPill.transform).gameObject.AddComponent<Image>();
-                icon.sprite = coinIcon;
-                icon.preserveAspect = true;
-                icon.raycastTarget = false;
-                var iconRt = icon.rectTransform;
-                iconRt.anchorMin = new Vector2(0f, 0.5f);
-                iconRt.anchorMax = new Vector2(0f, 0.5f);
-                iconRt.pivot = new Vector2(0f, 0.5f);
-                iconRt.anchoredPosition = new Vector2(14f, 0f);
-                iconRt.sizeDelta = new Vector2(68f, 68f);
-            }
+            // Les perles se lisent moins souvent : gélule compacte, calée à droite.
+            _pearlPill = BuildCurrencyPill(header.transform, PearlBlue, "pearl", 34, out _pearlText,
+                new Vector2(1f, 1f), new Vector2(-16f, -22f), new Vector2(210f, 76f));
 
-            _moneyPill = pillRt;
-            _moneyText = UiKit.CreateText("Money", moneyPill.transform, 60, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UiKit.AddOutline(_moneyText, 2f);
-            UiKit.Stretch(_moneyText.rectTransform, 90, 24, 0, 0);
+            // ---- Rangée 2 : la chaîne de transformation, une puce par ressource ----
+            // Trois nombres alignés dans une phrase ne se lisaient pas ; en puces avec
+            // leur icône, on voit d'un coup d'œil où en est la cale.
+            _rawChip = BuildStatChip(header.transform, "fish_raw", GameTheme.RawLabel, 0.015f, 0.335f, 128f);
+            _cutChip = BuildStatChip(header.transform, "fillet", GameTheme.CutLabel, 0.345f, 0.665f, 128f);
+            _filletChip = BuildStatChip(header.transform, "crate", GameTheme.FilletLabel, 0.675f, 0.985f, 128f);
 
-            // Pastille de perles : la monnaie premium se voit en permanence, sinon
-            // personne ne sait qu'il en a (et la boutique n'a plus de raison d'exister).
-            var pearlPill = UiKit.CreateCard("PearlPill", header.transform, PearlBlue, shadow: false);
-            var pearlRt = pearlPill.rectTransform;
-            pearlRt.anchorMin = new Vector2(1f, 1f);
-            pearlRt.anchorMax = new Vector2(1f, 1f);
-            pearlRt.pivot = new Vector2(1f, 1f);
-            pearlRt.anchoredPosition = new Vector2(-14f, -14f);
-            pearlRt.sizeDelta = new Vector2(196f, 68f);
+            // ---- Rangée 3 : la jauge de cale, l'information vitale du jeu ----
+            var holdTrack = UiKit.CreateCard("HoldTrack", header.transform, new Color(0.10f, 0.20f, 0.26f, 0.16f), shadow: false);
+            var trackRt = holdTrack.rectTransform;
+            trackRt.anchorMin = new Vector2(0f, 1f);
+            trackRt.anchorMax = new Vector2(0.60f, 1f);
+            trackRt.offsetMin = new Vector2(22f, -262f);
+            trackRt.offsetMax = new Vector2(-10f, -212f);
 
-            var pearlIcon = UiKit.Icon("pearl");
-            if (pearlIcon != null)
-            {
-                var icon = UiKit.CreateRect("Pearl", pearlPill.transform).gameObject.AddComponent<Image>();
-                icon.sprite = pearlIcon;
-                icon.preserveAspect = true;
-                icon.raycastTarget = false;
-                var rt = icon.rectTransform;
-                rt.anchorMin = new Vector2(0f, 0.5f);
-                rt.anchorMax = new Vector2(0f, 0.5f);
-                rt.pivot = new Vector2(0f, 0.5f);
-                rt.anchoredPosition = new Vector2(10f, 0f);
-                rt.sizeDelta = new Vector2(50f, 50f);
-            }
-
-            _pearlPill = pearlRt;
-            _pearlText = UiKit.CreateText("Pearls", pearlPill.transform, 34, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
-            UiKit.AddOutline(_pearlText, 1.4f);
-            UiKit.Stretch(_pearlText.rectTransform, 64, 14, 0, 0);
-
-            _stocksText = UiKit.CreateText("Stocks", header.transform, 34, TextDim, TextAnchor.MiddleCenter);
-            UiKit.AnchorTop(_stocksText.rectTransform, 122, 44, 30);
-
-            _metaText = UiKit.CreateText("Meta", header.transform, 30, TextDim, TextAnchor.MiddleCenter);
-            UiKit.AnchorTop(_metaText.rectTransform, 168, 40, 30);
-
-            var barrelIcon = UiKit.Icon("crate");
-            if (barrelIcon != null)
-            {
-                var icon = UiKit.CreateRect("Barrel", header.transform).gameObject.AddComponent<Image>();
-                icon.sprite = barrelIcon;
-                icon.preserveAspect = true;
-                icon.raycastTarget = false;
-                icon.rectTransform.anchorMin = new Vector2(0f, 1f);
-                icon.rectTransform.anchorMax = new Vector2(0f, 1f);
-                icon.rectTransform.pivot = new Vector2(0f, 1f);
-                icon.rectTransform.anchoredPosition = new Vector2(36f, -218f);
-                icon.rectTransform.sizeDelta = new Vector2(52f, 52f);
-            }
-
-            var holdBar = UiKit.CreateCard("HoldBar", header.transform, new Color(0f, 0f, 0f, 0.12f), shadow: false);
-            var holdBarRt = holdBar.rectTransform;
-            holdBarRt.anchorMin = new Vector2(0f, 1f);
-            holdBarRt.anchorMax = new Vector2(0.62f, 1f);
-            holdBarRt.offsetMin = new Vector2(104f, -250f);
-            holdBarRt.offsetMax = new Vector2(-8f, -224f);
-            var fill = UiKit.CreateCard("Fill", holdBar.transform, HoldBarColor, shadow: false);
-            fill.rectTransform.anchorMin = Vector2.zero;
-            fill.rectTransform.anchorMax = new Vector2(0f, 1f);
-            fill.rectTransform.offsetMin = new Vector2(3f, 3f);
-            fill.rectTransform.offsetMax = new Vector2(-3f, -3f);
+            var fill = UiKit.CreateCard("Fill", holdTrack.transform, HoldBarColor, shadow: false);
             _holdFill = fill.rectTransform;
+            _holdFill.anchorMin = Vector2.zero;
+            _holdFill.anchorMax = new Vector2(0f, 1f);
+            _holdFill.offsetMin = new Vector2(4f, 4f);
+            _holdFill.offsetMax = new Vector2(-4f, -4f);
 
-            _holdText = UiKit.CreateText("HoldText", header.transform, 28, TextDim, TextAnchor.MiddleLeft);
-            var holdTextRt = _holdText.rectTransform;
-            holdTextRt.anchorMin = new Vector2(0f, 1f);
-            holdTextRt.anchorMax = new Vector2(0.62f, 1f);
-            holdTextRt.offsetMin = new Vector2(106f, -296f);
-            holdTextRt.offsetMax = new Vector2(-6f, -254f);
+            // Le texte vit DANS la jauge : une barre sans chiffre ne dit pas combien
+            // il reste, un chiffre à côté de la barre oblige à regarder deux fois.
+            _holdText = UiKit.CreateText("HoldText", holdTrack.transform, 26, TextMain, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UiKit.Stretch(_holdText.rectTransform, 12, 12, 0, 0);
 
-            var (sellButton, sellLabel, sellRect) = UiKit.CreateFancyButton("SellAll", header.transform, SellGreen, 30);
+            // ---- Le bouton de vente, aligné sur la jauge ----
+            var (sellButton, sellLabel, sellRect) = UiKit.CreateFancyButton("SellAll", header.transform, SellGreen, 28);
             sellLabel.text = GameTheme.SellAllAction;
-            sellRect.anchorMin = new Vector2(0.64f, 1f);
+            sellRect.anchorMin = new Vector2(0.62f, 1f);
             sellRect.anchorMax = new Vector2(1f, 1f);
-            sellRect.offsetMin = new Vector2(4f, -304f);
-            sellRect.offsetMax = new Vector2(-22f, -222f);
+            sellRect.offsetMin = new Vector2(4f, -268f);
+            sellRect.offsetMax = new Vector2(-22f, -206f);
             sellButton.onClick.AddListener(() =>
             {
                 var boot = GameBootstrap.Instance;
@@ -590,10 +545,94 @@ namespace Devside.FishingIdle.Game
             _sellButton = sellButton;
             _sellLabel = sellLabel;
 
+            // ---- Rangée 4 : la progression, en petites pastilles discrètes ----
+            _depthChip = BuildMetaChip(header.transform, GameTheme.DepthLabel, 0.015f, 0.335f);
+            _dexChip = BuildMetaChip(header.transform, GameTheme.CollectionLabel, 0.345f, 0.665f);
+            _prestigeChip = BuildMetaChip(header.transform, GameTheme.PrestigeAction, 0.675f, 0.985f);
+
             _offlineText = UiKit.CreateText("Offline", canvas, 30, new Color(1f, 0.85f, 0.4f), TextAnchor.MiddleCenter);
             UiKit.AddOutline(_offlineText, 1.2f);
             UiKit.AnchorTop(_offlineText.rectTransform, HeaderHeight + 26, 44, 30);
             _offlineText.gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// Gélule de monnaie : fond coloré, pastille d'icône à gauche, montant en gras
+        /// à contour. C'est l'élément le plus regardé de l'écran — il doit avoir du
+        /// volume (ombre portée) et de la lumière (reflet).
+        /// </summary>
+        RectTransform BuildCurrencyPill(Transform parent, Color color, string iconName, int fontSize,
+            out Text value, Vector2 anchor, Vector2 position, Vector2 size)
+        {
+            var pill = UiKit.CreateCard("Pill", parent, color, shadow: false);
+            UiKit.AddSoftShadow(pill, 4f, 0.28f);
+            var rt = pill.rectTransform;
+            rt.anchorMin = anchor;
+            rt.anchorMax = anchor;
+            rt.pivot = new Vector2(anchor.x, 1f);
+            rt.anchoredPosition = position;
+            rt.sizeDelta = size;
+
+            var gloss = UiKit.CreateCard("Gloss", pill.transform, new Color(1f, 1f, 1f, 0.18f), shadow: false);
+            gloss.raycastTarget = false;
+            var glossRt = gloss.rectTransform;
+            glossRt.anchorMin = new Vector2(0f, 0.52f);
+            glossRt.anchorMax = new Vector2(1f, 1f);
+            glossRt.offsetMin = new Vector2(8f, 0f);
+            glossRt.offsetMax = new Vector2(-8f, -6f);
+
+            float badgeSize = size.y - 14f;
+            var badge = UiKit.CreateIconBadge(pill.transform, UiKit.Icon(iconName),
+                new Color(1f, 1f, 1f, 0.92f), badgeSize);
+            badge.rectTransform.anchoredPosition = new Vector2(badgeSize * 0.5f + 8f, 0f);
+
+            value = UiKit.CreateText("Value", pill.transform, fontSize, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UiKit.AddOutline(value, 1.8f);
+            UiKit.Stretch(value.rectTransform, badgeSize + 18f, 18f, 0, 0);
+            return rt;
+        }
+
+        /// <summary>
+        /// Puce de ressource : l'icône, le nom de l'étape et le stock. Le nom compte —
+        /// trois icônes de poisson sans légende ne disent pas laquelle est la découpe.
+        /// </summary>
+        Text BuildStatChip(Transform parent, string iconName, string label, float xMin, float xMax, float top)
+        {
+            var chip = UiKit.CreateCard("Chip", parent, ChipBg, shadow: false);
+            var rt = chip.rectTransform;
+            rt.anchorMin = new Vector2(xMin, 1f);
+            rt.anchorMax = new Vector2(xMax, 1f);
+            rt.offsetMin = new Vector2(6f, -(top + 64f));
+            rt.offsetMax = new Vector2(-6f, -top);
+
+            var badge = UiKit.CreateIconBadge(chip.transform, UiKit.Icon(iconName), Color.white, 48f);
+            badge.rectTransform.anchoredPosition = new Vector2(32f, 0f);
+
+            var title = UiKit.CreateText("Label", chip.transform, 19, TextDim, TextAnchor.LowerLeft);
+            title.text = label.ToUpperInvariant();
+            UiKit.Stretch(title.rectTransform, 64, 8, 8, 32);
+
+            var value = UiKit.CreateText("Value", chip.transform, 27, TextMain, TextAnchor.UpperLeft, FontStyle.Bold);
+            UiKit.Stretch(value.rectTransform, 64, 8, 30, 6);
+            return value;
+        }
+
+        /// <summary>Pastille de progression : un intitulé court et sa valeur, en discret.</summary>
+        Text BuildMetaChip(Transform parent, string label, float xMin, float xMax)
+        {
+            var chip = UiKit.CreateRect("Meta", parent);
+            chip.anchorMin = new Vector2(xMin, 1f);
+            chip.anchorMax = new Vector2(xMax, 1f);
+            chip.offsetMin = new Vector2(6f, -322f);
+            chip.offsetMax = new Vector2(-6f, -278f);
+
+            var title = UiKit.CreateText("Label", chip, 21, TextDim, TextAnchor.UpperCenter);
+            title.text = label.ToUpperInvariant();
+            UiKit.Stretch(title.rectTransform, 0, 0, 0, 22);
+
+            var value = UiKit.CreateText("Value", chip, 26, TextMain, TextAnchor.LowerCenter, FontStyle.Bold);
+            UiKit.Stretch(value.rectTransform, 0, 0, 20, 0);
+            return value;
         }
 
         void BuildCatchBanner(Transform canvas)
@@ -1203,13 +1242,10 @@ namespace Devside.FishingIdle.Game
             var (button, text, rect) = UiKit.CreateFancyButton(name, bar, TabBlue, 26, icon);
             text.text = label;
             SetBarSlot(rect, xMin, xMax);
-            button.onClick.AddListener(() =>
-            {
-                // Le pouce a besoin de savoir que l'appui a « pris » avant même que le
-                // panneau s'ouvre : la vignette rebondit tout de suite.
-                UiTween.Punch(rect, 0.08f, 0.16f);
-                onClick();
-            });
+            // Pas de rebond ici : un onglet occupe toute la hauteur de sa barre, le
+            // moindre agrandissement le fait déborder de l'écran (retour playtest).
+            // L'enfoncement du bouton suffit à dire que l'appui a pris.
+            button.onClick.AddListener(() => onClick());
         }
 
         static void SetBarSlot(RectTransform rt, float xMin, float xMax)
