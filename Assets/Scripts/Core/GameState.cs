@@ -29,6 +29,14 @@ namespace Devside.FishingIdle.Core
         public int level;
     }
 
+    /// <summary>Un compte à rebours nommé (boost en cours, délai de rechargement d'une pub).</summary>
+    [Serializable]
+    public class TimerState
+    {
+        public string id;
+        public double secondsLeft;
+    }
+
     /// <summary>
     /// Une pièce d'équipement de la collection : son niveau (0 = pas encore trouvée) et
     /// les exemplaires en réserve pour la prochaine fusion. Voir Core/Equipment.
@@ -55,6 +63,12 @@ namespace Devside.FishingIdle.Core
         public double cutFish;
         public double fillet;
 
+        /// <summary>
+        /// Perles : la monnaie premium. Elles se gagnent lentement en jouant (découvertes
+        /// du Poissodex, pubs récompensées) ou s'achètent, et survivent au prestige.
+        /// </summary>
+        public double pearls;
+
         /// <summary>Argent gagné depuis le tout début (ne baisse jamais) — base du prestige.</summary>
         public double lifetimeMoney;
         public int prestigePoints;
@@ -68,6 +82,12 @@ namespace Devside.FishingIdle.Core
 
         /// <summary>Collection d'équipement. Permanente : elle survit au prestige.</summary>
         public List<EquipmentPieceState> equipment = new List<EquipmentPieceState>();
+
+        /// <summary>Boosts en cours (id → secondes restantes).</summary>
+        public List<TimerState> boosts = new List<TimerState>();
+
+        /// <summary>Délais de rechargement des pubs récompensées (id → secondes restantes).</summary>
+        public List<TimerState> adCooldowns = new List<TimerState>();
 
         /// <summary>
         /// Pièce portée à chaque emplacement (index = EquipmentSlot, chaîne vide = aucune).
@@ -150,6 +170,18 @@ namespace Devside.FishingIdle.Core
             return created;
         }
 
+        /// <summary>Un compte à rebours de la liste donnée, créé à la volée si <paramref name="create"/>.</summary>
+        public TimerState Timer(List<TimerState> timers, string id, bool create)
+        {
+            for (int i = 0; i < timers.Count; i++)
+                if (timers[i].id == id)
+                    return timers[i];
+            if (!create) return null;
+            var created = new TimerState { id = id, secondsLeft = 0 };
+            timers.Add(created);
+            return created;
+        }
+
         /// <summary>La pièce d'équipement, créée à la volée si <paramref name="create"/>.</summary>
         public EquipmentPieceState EquipmentPiece(string equipmentId, bool create)
         {
@@ -184,6 +216,7 @@ namespace Devside.FishingIdle.Core
         {
             version = other.version;
             money = other.money;
+            pearls = other.pearls;
             rawFish = other.rawFish;
             cutFish = other.cutFish;
             fillet = other.fillet;
@@ -195,6 +228,8 @@ namespace Devside.FishingIdle.Core
             discoveredSpecies = other.discoveredSpecies;
             equipment = other.equipment;
             equippedBySlot = other.equippedBySlot;
+            boosts = other.boosts;
+            adCooldowns = other.adCooldowns;
             lastSeenUnixSeconds = other.lastSeenUnixSeconds;
             currentZone = other.currentZone;
         }

@@ -201,6 +201,17 @@ la 6–8ᵉ heure, et un joueur qui prestige 3 fois avant d'avoir tout vu.
   chaque palier a son profil de rareté ; le tirage est un roll ∈ [0,1[ injecté par
   l'hôte, comme les espèces. La première pièce trouvée pour un emplacement vide est
   portée d'office. La collection **survit au prestige**, comme le Poissodex.
+- **Les perles et la boutique** (v0.6) : la monnaie premium existe en jeu. Elle se
+  gagne lentement mais réellement sans payer — **+2 perles par découverte du
+  Poissodex** et par les pubs récompensées — et elle survit au prestige. La boutique
+  suit l'ordre du business plan : d'abord le **gratuit** (pubs, toujours opt-in,
+  jamais d'interstitiel), puis les **boosts** (Coup de filet ×2 pêche 4 h, cumul
+  plafonné à 8 h ; Vent dans les voiles +50 % de vitesse 10 min), les **coffres en
+  perles** (mêmes tables de rareté que ceux payés en pièces), et enfin les **packs**.
+  Le Core ne connaît ni SDK ni facturation : `Shop.ClaimAdReward` s'applique APRÈS
+  qu'une pub a été vue, `Shop.GrantPack` APRÈS validation d'un achat — brancher Unity
+  Ads ou Unity IAP ne touchera qu'un point d'appel côté hôte. Les boutons de packs
+  restent **inactifs** tant que la facturation n'existe pas : rien à simuler.
 
 **Équilibrage v2** (leçon du premier playtest : tout le contenu consommé en minutes) :
 - La canne progresse moins vite que son coût (×1,5 de pêche pour ×2,2 de prix) — le clic
