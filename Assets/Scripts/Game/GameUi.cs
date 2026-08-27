@@ -28,6 +28,9 @@ namespace Devside.FishingIdle.Game
         static readonly Color CardBg = new Color(1f, 1f, 1f, 0.96f);
         static readonly Color PanelBg = new Color(0.96f, 0.94f, 0.89f, 0.98f);
         static readonly Color RowBg = new Color(1f, 1f, 1f, 0.92f);
+
+        /// <summary>Fond d'une pièce PORTÉE : elle doit sauter aux yeux dans la liste.</summary>
+        static readonly Color WornRowBg = new Color(0.90f, 0.96f, 0.90f, 0.98f);
         static readonly Color MoneyGreen = new Color(0.33f, 0.72f, 0.32f);
         static readonly Color BuyOrange = new Color(0.96f, 0.62f, 0.16f);
         static readonly Color CastGreen = new Color(0.35f, 0.76f, 0.31f);
@@ -95,6 +98,37 @@ namespace Devside.FishingIdle.Game
         }
 
         readonly List<DexRow> _dexRows = new List<DexRow>();
+
+        /// <summary>Une pièce d'équipement du catalogue : toujours construite, grisée tant qu'on ne l'a pas.</summary>
+        class EquipRow
+        {
+            public EquipmentDef def;
+            public Image card;
+            public Image icon;
+            public Text name;
+            public Text detail;
+            public Button action;
+            public Text actionLabel;
+        }
+
+        class ChestRow
+        {
+            public ChestDef def;
+            public Text price;
+            public Button action;
+        }
+
+        readonly List<EquipRow> _equipRows = new List<EquipRow>();
+        readonly List<ChestRow> _chestRows = new List<ChestRow>();
+
+        // Couleurs de rareté : la même échelle partout (bordure de carte, tag, texte).
+        static readonly Color[] RarityColors =
+        {
+            new Color(0.62f, 0.66f, 0.70f),
+            new Color(0.25f, 0.60f, 0.86f),
+            new Color(0.58f, 0.36f, 0.80f),
+            new Color(0.96f, 0.62f, 0.16f),
+        };
         Text _statLifetime;
         Text _statDiscovered;
         Text _statPrestige;
@@ -416,7 +450,7 @@ namespace Devside.FishingIdle.Game
             _metaText = UiKit.CreateText("Meta", header.transform, 30, TextDim, TextAnchor.MiddleCenter);
             UiKit.AnchorTop(_metaText.rectTransform, 168, 40, 30);
 
-            var barrelIcon = UiKit.Icon("barrel");
+            var barrelIcon = UiKit.Icon("crate");
             if (barrelIcon != null)
             {
                 var icon = UiKit.CreateRect("Barrel", header.transform).gameObject.AddComponent<Image>();
@@ -651,6 +685,9 @@ namespace Devside.FishingIdle.Game
             _statPrestige = AddStatRow(content, GameTheme.StatPrestige);
             _statZone = AddStatRow(content, GameTheme.StatZone);
 
+            BuildEquipmentSection(content, boot.Config);
+            BuildChestSection(content, boot.Config);
+
             AddSectionHeader(content, GameTheme.CollectionSection);
             foreach (var species in boot.Config.species)
             {
@@ -662,6 +699,138 @@ namespace Devside.FishingIdle.Game
                 UiKit.Stretch(bonus.rectTransform, 30, 30, 0, 0);
                 _dexRows.Add(new DexRow { id = species.id, def = species, name = name, bonus = bonus });
             }
+        }
+
+        /// <summary>
+        /// L'atelier du capitaine : les quatre emplacements, chacun avec ses pièces.
+        /// Tout le catalogue est construit une fois — une pièce pas encore trouvée reste
+        /// visible mais grisée, c'est elle qui donne envie d'ouvrir un coffre.
+        /// </summary>
+        void BuildEquipmentSection(Transform content, BalanceConfig config)
+        {
+            AddSectionHeader(content, GameTheme.EquipmentSection);
+            for (int slot = 0; slot < 4; slot++)
+            {
+                var pieces = Equipment.ForSlot(config, (EquipmentSlot)slot);
+                if (pieces.Count == 0) continue;
+                AddSlotHeader(content, GameTheme.SlotName((EquipmentSlot)slot));
+                foreach (var def in pieces) _equipRows.Add(BuildEquipRow(content, def));
+            }
+        }
+
+        /// <summary>Petit intitulé d'emplacement, plus discret qu'un titre de section.</summary>
+        void AddSlotHeader(Transform parent, string title)
+        {
+            var label = UiKit.CreateText("Slot", parent, 28, TextDim, TextAnchor.MiddleLeft, FontStyle.Bold);
+            label.text = title.ToUpperInvariant();
+            label.gameObject.AddComponent<LayoutElement>().preferredHeight = 46;
+        }
+
+        EquipRow BuildEquipRow(Transform parent, EquipmentDef def)
+        {
+            var card = UiKit.CreateCard("Equip", parent, RowBg, shadow: false);
+            card.gameObject.AddComponent<LayoutElement>().preferredHeight = 112;
+
+            // Pastille de rareté + icône du kit : la ligne se lit sans lire.
+            var badge = UiKit.CreateRect("Badge", card.transform).gameObject.AddComponent<Image>();
+            badge.sprite = UiKit.Rounded;
+            badge.type = Image.Type.Sliced;
+            badge.color = RarityColors[(int)def.rarity];
+            badge.raycastTarget = false;
+            badge.rectTransform.anchorMin = new Vector2(0f, 0.5f);
+            badge.rectTransform.anchorMax = new Vector2(0f, 0.5f);
+            badge.rectTransform.sizeDelta = new Vector2(88f, 88f);
+            badge.rectTransform.anchoredPosition = new Vector2(64f, 0f);
+
+            var icon = UiKit.CreateRect("Icon", badge.transform).gameObject.AddComponent<Image>();
+            icon.sprite = UiKit.Icon(GameTheme.EquipmentIcon(def.id));
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
+            UiKit.Stretch(icon.rectTransform, 8, 8, 8, 8);
+            icon.enabled = icon.sprite != null;
+
+            var name = UiKit.CreateText("Name", card.transform, 32, TextMain, TextAnchor.LowerLeft, FontStyle.Bold);
+            UiKit.Stretch(name.rectTransform, 122, 250, 16, 56);
+            name.text = GameTheme.EquipmentName(def.id);
+
+            var detail = UiKit.CreateText("Detail", card.transform, 26, TextDim, TextAnchor.UpperLeft);
+            UiKit.Stretch(detail.rectTransform, 122, 250, 58, 14);
+
+            var (button, label, rect) = UiKit.CreateFancyButton("Act", card.transform, BuyOrange, 26);
+            rect.anchorMin = new Vector2(1f, 0.5f);
+            rect.anchorMax = new Vector2(1f, 0.5f);
+            rect.sizeDelta = new Vector2(216f, 76f);
+            rect.anchoredPosition = new Vector2(-124f, 0f);
+
+            var row = new EquipRow
+            {
+                def = def, card = card, icon = icon, name = name,
+                detail = detail, action = button, actionLabel = label,
+            };
+            button.onClick.AddListener(() =>
+            {
+                var boot = GameBootstrap.Instance;
+                if (Equipment.CanUpgrade(boot.Config, boot.State, def.id))
+                {
+                    Equipment.Upgrade(boot.Config, boot.State, def.id);
+                    ShowBanner($"{GameTheme.EquipmentName(def.id)} — " +
+                        string.Format(GameTheme.LevelFormat, Equipment.Level(boot.State, def.id)));
+                }
+                else
+                {
+                    Equipment.Equip(boot.Config, boot.State, def.id);
+                }
+            });
+            return row;
+        }
+
+        void BuildChestSection(Transform content, BalanceConfig config)
+        {
+            AddSectionHeader(content, GameTheme.ChestsSection);
+            foreach (var chest in config.chests)
+            {
+                var card = UiKit.CreateCard("Chest", content, RowBg, shadow: false);
+                card.gameObject.AddComponent<LayoutElement>().preferredHeight = 112;
+
+                var icon = UiKit.CreateRect("Icon", card.transform).gameObject.AddComponent<Image>();
+                icon.sprite = UiKit.Icon(GameTheme.EquipmentIcon(chest.id));
+                icon.preserveAspect = true;
+                icon.raycastTarget = false;
+                icon.rectTransform.anchorMin = new Vector2(0f, 0.5f);
+                icon.rectTransform.anchorMax = new Vector2(0f, 0.5f);
+                icon.rectTransform.sizeDelta = new Vector2(92f, 92f);
+                icon.rectTransform.anchoredPosition = new Vector2(64f, 0f);
+                icon.enabled = icon.sprite != null;
+
+                var name = UiKit.CreateText("Name", card.transform, 32, TextMain, TextAnchor.LowerLeft, FontStyle.Bold);
+                UiKit.Stretch(name.rectTransform, 122, 250, 16, 56);
+                name.text = GameTheme.ChestName(chest.id);
+
+                var price = UiKit.CreateText("Price", card.transform, 26, TextDim, TextAnchor.UpperLeft);
+                UiKit.Stretch(price.rectTransform, 122, 250, 58, 14);
+                price.text = $"{Numbers.Format(chest.cost)} {GameTheme.MoneySuffix}";
+
+                var (button, label, rect) = UiKit.CreateFancyButton("Open", card.transform, PrestigeOrange, 26);
+                label.text = GameTheme.OpenChestAction;
+                rect.anchorMin = new Vector2(1f, 0.5f);
+                rect.anchorMax = new Vector2(1f, 0.5f);
+                rect.sizeDelta = new Vector2(216f, 76f);
+                rect.anchoredPosition = new Vector2(-124f, 0f);
+                button.onClick.AddListener(() => OpenChest(chest.id));
+
+                _chestRows.Add(new ChestRow { def = chest, price = price, action = button });
+            }
+        }
+
+        /// <summary>Ouverture d'un coffre : le hasard vient de l'hôte, le Core fait le reste.</summary>
+        void OpenChest(string chestId)
+        {
+            var boot = GameBootstrap.Instance;
+            var result = Equipment.OpenChest(boot.Config, boot.State, chestId, Random.value);
+            if (result == null) return;
+            ShowBanner(string.Format(GameTheme.ChestOpenedFormat,
+                GameTheme.EquipmentName(result.equipmentId),
+                result.isNew ? GameTheme.ChestNewPiece : GameTheme.ChestDuplicate));
         }
 
         /// <summary>Ligne de statistique : libellé à gauche, valeur à droite — jamais tronquée.</summary>
@@ -683,6 +852,46 @@ namespace Devside.FishingIdle.Game
             _statDiscovered.text = $"{state.discoveredSpecies.Count}/{config.species.Count}";
             _statPrestige.text = state.prestigePoints.ToString();
             _statZone.text = Catching.DepthLevel(config, state).ToString();
+
+            foreach (var row in _equipRows)
+            {
+                int level = Equipment.Level(state, row.def.id);
+                bool owned = level > 0;
+                bool worn = state.EquippedId(row.def.slot) == row.def.id;
+                bool fusable = Equipment.CanUpgrade(config, state, row.def.id);
+
+                row.name.text = owned ? GameTheme.EquipmentName(row.def.id) : GameTheme.UnknownEquipment;
+                row.name.color = owned ? TextMain : TextDim;
+                row.icon.color = owned ? Color.white : new Color(1f, 1f, 1f, 0.35f);
+                row.card.color = worn ? WornRowBg : RowBg;
+
+                if (owned)
+                {
+                    int copies = Equipment.Copies(state, row.def.id);
+                    string detail = string.Format(GameTheme.EquipmentDetailFormat, level,
+                        Numbers.Format(row.def.bonusPerLevel * level * 100),
+                        GameTheme.EffectName(row.def.effect));
+                    if (level < row.def.maxLevel)
+                        detail += "  ·  " + string.Format(GameTheme.FuseProgressFormat,
+                            copies, Equipment.CopiesToUpgrade(level));
+                    row.detail.text = worn ? $"{GameTheme.EquippedTag}  ·  {detail}" : detail;
+                }
+                else
+                {
+                    row.detail.text = GameTheme.RarityName(row.def.rarity);
+                }
+
+                bool showAction = owned && (fusable || !worn);
+                if (row.action.gameObject.activeSelf != showAction) row.action.gameObject.SetActive(showAction);
+                if (showAction) row.actionLabel.text = fusable ? GameTheme.FuseAction : GameTheme.EquipAction;
+            }
+
+            foreach (var row in _chestRows)
+            {
+                bool affordable = state.money >= row.def.cost;
+                row.action.interactable = affordable;
+                row.price.color = affordable ? TextDim : new Color(0.85f, 0.35f, 0.25f);
+            }
 
             foreach (var row in _dexRows)
             {
@@ -756,15 +965,15 @@ namespace Devside.FishingIdle.Game
 
             // 5 onglets : Bateau · Carte · PÊCHER · Profil · Boutique.
             AddTab(bar.transform, "BoatTab", GameTheme.BoatTab, UiKit.Icon("crew"), 0.010f, 0.196f, () => TogglePanel(_boatPanel));
-            AddTab(bar.transform, "MapTab", GameTheme.MapTab, null, 0.206f, 0.392f, () => TogglePanel(_mapPanel));
+            AddTab(bar.transform, "MapTab", GameTheme.MapTab, UiKit.Icon("map"), 0.206f, 0.392f, () => TogglePanel(_mapPanel));
 
-            var (castButton, castLabel, castRect) = UiKit.CreateFancyButton("Cast", bar.transform, CastGreen, 32, UiKit.Icon("fish"));
+            var (castButton, castLabel, castRect) = UiKit.CreateFancyButton("Cast", bar.transform, CastGreen, 32, UiKit.Icon("fish_raw"));
             castLabel.text = GameTheme.CastAction;
             SetBarSlot(castRect, 0.402f, 0.598f);
             castButton.onClick.AddListener(() => Cast(new Vector2(Screen.width * 0.62f, Screen.height * 0.45f)));
 
-            AddTab(bar.transform, "ProfileTab", GameTheme.ProfileTab, UiKit.Icon("star"), 0.608f, 0.794f, () => TogglePanel(_profilePanel));
-            AddTab(bar.transform, "ShopTab", GameTheme.ShopTab, UiKit.Icon("coin"), 0.804f, 0.990f, () => TogglePanel(_shopPanel));
+            AddTab(bar.transform, "ProfileTab", GameTheme.ProfileTab, UiKit.Icon("captain"), 0.608f, 0.794f, () => TogglePanel(_profilePanel));
+            AddTab(bar.transform, "ShopTab", GameTheme.ShopTab, UiKit.Icon("shop"), 0.804f, 0.990f, () => TogglePanel(_shopPanel));
         }
 
         void AddTab(Transform bar, string name, string label, Sprite icon, float xMin, float xMax, System.Action onClick)

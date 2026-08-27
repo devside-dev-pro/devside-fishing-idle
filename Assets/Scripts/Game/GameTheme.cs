@@ -46,6 +46,49 @@ namespace Devside.FishingIdle.Game
             ["leviathan"] = "Léviathan",
         };
 
+        static readonly Dictionary<string, string> EquipmentNames = new Dictionary<string, string>
+        {
+            ["rod_bamboo"] = "Canne en bambou",
+            ["rod_carbon"] = "Canne carbone",
+            ["rod_abyssal"] = "Canne des abysses",
+            ["reel_basic"] = "Moulinet simple",
+            ["reel_precision"] = "Moulinet de précision",
+            ["reel_storm"] = "Moulinet tempête",
+            ["bait_worm"] = "Vers de vase",
+            ["bait_lure"] = "Leurre coloré",
+            ["bait_glow"] = "Leurre luminescent",
+            ["outfit_hat"] = "Bob du pêcheur",
+            ["outfit_raincoat"] = "Ciré jaune",
+            ["outfit_captain"] = "Habit de capitaine",
+        };
+
+        /// <summary>Icône du kit UI (Resources/UI/Icons) pour chaque pièce et chaque coffre.</summary>
+        static readonly Dictionary<string, string> EquipmentIcons = new Dictionary<string, string>
+        {
+            ["rod_bamboo"] = "eq_rod",
+            ["rod_carbon"] = "eq_rod",
+            ["rod_abyssal"] = "eq_rod",
+            ["reel_basic"] = "eq_reel",
+            ["reel_precision"] = "eq_reel",
+            ["reel_storm"] = "eq_line",
+            ["bait_worm"] = "eq_bait",
+            ["bait_lure"] = "eq_lure",
+            ["bait_glow"] = "eq_lure",
+            ["outfit_hat"] = "eq_hat",
+            ["outfit_raincoat"] = "eq_raincoat",
+            ["outfit_captain"] = "captain",
+            ["chest_wood"] = "chest_wood",
+            ["chest_silver"] = "chest_silver",
+            ["chest_gold"] = "chest_gold",
+        };
+
+        static readonly Dictionary<string, string> ChestNames = new Dictionary<string, string>
+        {
+            ["chest_wood"] = "Coffre en bois",
+            ["chest_silver"] = "Coffre d'argent",
+            ["chest_gold"] = "Coffre d'or",
+        };
+
         static readonly Dictionary<string, string> IslandNames = new Dictionary<string, string>
         {
             ["island_port"] = "Le Vieux Ponton",
@@ -74,6 +117,19 @@ namespace Devside.FishingIdle.Game
         public const string ZoneLockedFormat = "Coque niv. {0}";
         public const string ProfileTitle = "Capitaine";
         public const string CollectionSection = "— Poissodex —";
+        public const string EquipmentSection = "— Équipement —";
+        public const string ChestsSection = "— Coffres —";
+        public const string EquipAction = "Équiper";
+        public const string FuseAction = "Fusionner";
+        public const string OpenChestAction = "Ouvrir";
+        public const string EquippedTag = "PORTÉ";
+        public const string UnknownEquipment = "À découvrir";
+        public const string LevelFormat = "Niv. {0}";
+        public const string EquipmentDetailFormat = "Niv. {0} · +{1} % {2}";
+        public const string FuseProgressFormat = "{0}/{1}";
+        public const string ChestOpenedFormat = "{0} — {1} !";
+        public const string ChestNewPiece = "nouvelle pièce";
+        public const string ChestDuplicate = "doublon gardé pour la fusion";
         public const string StatsSection = "— Statistiques —";
         public const string UndiscoveredSpecies = "???";
         public const string StatLifetime = "Gagné depuis le début";
@@ -103,6 +159,45 @@ namespace Devside.FishingIdle.Game
         public static string Producer(string id) => ProducerNames.TryGetValue(id, out var name) ? name : id;
         public static string Upgrade(string id) => UpgradeNames.TryGetValue(id, out var name) ? name : id;
         public static string Species(string id) => SpeciesNames.TryGetValue(id, out var name) ? name : id;
+        public static string EquipmentName(string id) => EquipmentNames.TryGetValue(id, out var name) ? name : id;
+        public static string ChestName(string id) => ChestNames.TryGetValue(id, out var name) ? name : id;
+        public static string EquipmentIcon(string id) => EquipmentIcons.TryGetValue(id, out var icon) ? icon : null;
+
+        /// <summary>Nom d'un emplacement d'équipement.</summary>
+        public static string SlotName(EquipmentSlot slot)
+        {
+            switch (slot)
+            {
+                case EquipmentSlot.Rod: return "Canne";
+                case EquipmentSlot.Reel: return "Moulinet";
+                case EquipmentSlot.Bait: return "Appât";
+                default: return "Tenue";
+            }
+        }
+
+        /// <summary>Ce qu'une pièce améliore, en clair.</summary>
+        public static string EffectName(EquipmentEffect effect)
+        {
+            switch (effect)
+            {
+                case EquipmentEffect.ManualCatch: return "à la canne";
+                case EquipmentEffect.ProducerRate: return "de production";
+                case EquipmentEffect.SellPrice: return "sur les prix";
+                default: return "de cale";
+            }
+        }
+
+        public static string RarityName(Core.Rarity rarity)
+        {
+            switch (rarity)
+            {
+                case Core.Rarity.Common: return "Commun";
+                case Core.Rarity.Rare: return "Rare";
+                case Core.Rarity.Epic: return "Épique";
+                default: return "Légendaire";
+            }
+        }
+
         public static string Island(string id) => IslandNames.TryGetValue(id, out var name) ? name : id;
     }
 }
