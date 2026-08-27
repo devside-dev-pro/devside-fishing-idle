@@ -16,12 +16,20 @@ namespace Devside.FishingIdle.Core.Tests
             var config = BalanceConfig.Default();
 
             foreach (var producer in config.producers)
+            {
                 Assert.That(GameTheme.Producer(producer.id), Is.Not.EqualTo(producer.id),
                     $"libellé manquant pour le producteur {producer.id}");
+                Assert.That(GameTheme.RowIcon(producer.id), Is.Not.Null,
+                    $"icône de ligne manquante pour le producteur {producer.id}");
+            }
 
             foreach (var upgrade in config.upgrades)
+            {
                 Assert.That(GameTheme.Upgrade(upgrade.id), Is.Not.EqualTo(upgrade.id),
                     $"libellé manquant pour l'amélioration {upgrade.id}");
+                Assert.That(GameTheme.RowIcon(upgrade.id), Is.Not.Null,
+                    $"icône de ligne manquante pour l'amélioration {upgrade.id}");
+            }
 
             foreach (var species in config.species)
                 Assert.That(GameTheme.Species(species.id), Is.Not.EqualTo(species.id),
