@@ -206,28 +206,6 @@ namespace Devside.FishingIdle.Game
         public static string Producer(string id) => ProducerNames.TryGetValue(id, out var name) ? name : id;
         public static string Upgrade(string id) => UpgradeNames.TryGetValue(id, out var name) ? name : id;
         public static string Species(string id) => SpeciesNames.TryGetValue(id, out var name) ? name : id;
-        public static string BoostName(string id) => BoostNames.TryGetValue(id, out var name) ? name : id;
-        public static string AdName(string id) => AdNames.TryGetValue(id, out var name) ? name : id;
-        public static string PackName(string id) => PackNames.TryGetValue(id, out var name) ? name : id;
-        public static string ShopIcon(string id) => ShopIcons.TryGetValue(id, out var icon) ? icon : null;
-
-        /// <summary>Ce que rapporte une pub, en une ligne.</summary>
-        public static string AdReward(RewardedAdDef def)
-        {
-            if (def.pearls > 0) return string.Format(AdPearlsFormat, def.pearls);
-            return string.IsNullOrEmpty(def.boostId) ? "" : BoostName(def.boostId);
-        }
-
-        /// <summary>Ce que fait un boost au repos : « ×2 pendant 4 h ».</summary>
-        public static string BoostIdle(BoostDef def)
-            => string.Format(BoostDurationFormat, def.multiplier, DurationText(def.durationSeconds));
-
-        static string DurationText(double seconds)
-        {
-            int minutes = (int)(seconds / 60);
-            return minutes >= 60 ? $"{minutes / 60} h" : $"{minutes} min";
-        }
-
         public static string EquipmentName(string id) => EquipmentNames.TryGetValue(id, out var name) ? name : id;
         public static string ChestName(string id) => ChestNames.TryGetValue(id, out var name) ? name : id;
         public static string BoostName(string id) => BoostNames.TryGetValue(id, out var name) ? name : id;

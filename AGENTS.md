@@ -29,7 +29,14 @@ Le game design de référence est `docs/GAME-DESIGN.md` — le lire avant de tou
 
 ## Validation avant commit
 
+- **Compiler, toujours** : `tools/compile-check/check.sh` (prérequis `mono-mcs`). Le script
+  compile Core + Game + tests contre des stubs d'UnityEngine et de NUnit. Il n'exécute
+  rien, mais une erreur de compilation empêche Unity de lancer quoi que ce soit — la
+  découvrir ici coûte dix secondes, la découvrir chez le testeur coûte un aller-retour.
+  Si le script signale un membre absent des stubs alors qu'il existe vraiment dans Unity,
+  compléter le stub (`tools/compile-check/UnityStub.cs`) — jamais contorsionner le jeu
+  pour satisfaire l'outil.
 - Les tests EditMode doivent passer (Unity → Test Runner). Dans un environnement sans
-  éditeur Unity (sessions distantes), les tests ne peuvent pas s'exécuter : dans ce cas,
-  garder les changements de Core autonomes et déterministes, relire le diff avec soin, et
-  signaler dans la PR que les tests doivent être lancés localement.
+  éditeur Unity (sessions distantes), ils ne peuvent pas s'exécuter : garder les
+  changements de Core autonomes et déterministes, et signaler dans la PR que les tests
+  doivent être lancés localement.
