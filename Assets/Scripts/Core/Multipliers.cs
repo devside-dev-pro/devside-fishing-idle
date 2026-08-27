@@ -9,13 +9,15 @@ namespace Devside.FishingIdle.Core
             => Prestige.ProductionMultiplier(config, state)
                * Catching.CollectionBonus(config, state)
                * FromUpgrades(config, state, UpgradeEffect.ManualCatchMultiplier, null)
-               * Equipment.Bonus(config, state, EquipmentEffect.ManualCatch);
+               * Equipment.Bonus(config, state, EquipmentEffect.ManualCatch)
+               * Shop.BoostMultiplier(config, state, BoostKind.Fishing);
 
         public static double ProducerRate(BalanceConfig config, GameState state, string producerId)
             => Prestige.ProductionMultiplier(config, state)
                * Catching.CollectionBonus(config, state)
                * FromUpgrades(config, state, UpgradeEffect.ProducerRateMultiplier, producerId)
-               * Equipment.Bonus(config, state, EquipmentEffect.ProducerRate);
+               * Equipment.Bonus(config, state, EquipmentEffect.ProducerRate)
+               * Shop.BoostMultiplier(config, state, BoostKind.Fishing);
 
         public static double SellPrice(BalanceConfig config, GameState state)
             => FromUpgrades(config, state, UpgradeEffect.SellPriceMultiplier, null)

@@ -42,6 +42,18 @@ namespace Devside.FishingIdle.Core.Tests
                 Assert.That(GameTheme.EquipmentIcon(chest.id), Is.Not.Null,
                     $"icône manquante pour le coffre {chest.id}");
             }
+
+            foreach (var boost in config.boosts)
+                Assert.That(GameTheme.BoostName(boost.id), Is.Not.EqualTo(boost.id),
+                    $"libellé manquant pour le boost {boost.id}");
+
+            foreach (var ad in config.rewardedAds)
+                Assert.That(GameTheme.AdName(ad.id), Is.Not.EqualTo(ad.id),
+                    $"libellé manquant pour la pub {ad.id}");
+
+            foreach (var pack in config.pearlPacks)
+                Assert.That(GameTheme.PackName(pack.id), Is.Not.EqualTo(pack.id),
+                    $"libellé manquant pour le pack {pack.id}");
         }
     }
 }

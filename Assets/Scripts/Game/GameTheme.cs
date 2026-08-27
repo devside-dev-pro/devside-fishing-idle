@@ -89,6 +89,37 @@ namespace Devside.FishingIdle.Game
             ["chest_gold"] = "Coffre d'or",
         };
 
+        static readonly Dictionary<string, string> BoostNames = new Dictionary<string, string>
+        {
+            ["boost_net"] = "Coup de filet",
+            ["boost_wind"] = "Vent dans les voiles",
+        };
+
+        static readonly Dictionary<string, string> AdNames = new Dictionary<string, string>
+        {
+            ["ad_net"] = "Coup de filet offert",
+            ["ad_wind"] = "Vent offert",
+            ["ad_pearl"] = "La perle du jour",
+        };
+
+        static readonly Dictionary<string, string> PackNames = new Dictionary<string, string>
+        {
+            ["pack_s"] = "Poignée de perles",
+            ["pack_m"] = "Bourse de perles",
+            ["pack_l"] = "Coffret de perles",
+            ["pack_xl"] = "Trésor de perles",
+        };
+
+        /// <summary>Icônes du kit UI pour les entrées de boutique.</summary>
+        static readonly Dictionary<string, string> ShopIcons = new Dictionary<string, string>
+        {
+            ["boost_net"] = "boost",
+            ["boost_wind"] = "arrow_up",
+            ["ad_net"] = "ad",
+            ["ad_wind"] = "ad",
+            ["ad_pearl"] = "ad",
+        };
+
         static readonly Dictionary<string, string> IslandNames = new Dictionary<string, string>
         {
             ["island_port"] = "Le Vieux Ponton",
@@ -136,9 +167,25 @@ namespace Devside.FishingIdle.Game
         public const string StatDiscovered = "Espèces découvertes";
         public const string StatPrestige = "Points de prestige";
         public const string StatZone = "Zone actuelle";
-        public const string ShopComingSoon =
-            "Le comptoir ouvre bientôt : perles, coffres, boosts et cosmétiques.\n" +
-            "Les pièces se gagnent en jouant — les perles arriveront avec la boutique.";
+        // Boutique.
+        public const string FreeSection = "— Gratuit (pub facultative) —";
+        public const string BoostsSection = "— Boosts —";
+        public const string PearlChestsSection = "— Coffres en perles —";
+        public const string PearlPacksSection = "— Perles —";
+        public const string PearlSuffix = "perles";
+        public const string WatchAdAction = "Regarder";
+        public const string AdClaimedFormat = "{0} — merci !";
+        public const string BoostStartedFormat = "{0} lancé !";
+        public const string BoostActiveFormat = "Actif encore {0}";
+        public const string BoostDurationFormat = "×{0} pendant {1}";
+        public const string AdPearlsFormat = "+{0} perles";
+        public const string ChestPearlHint = "Une pièce d'équipement au hasard";
+        public const string PackPlainFormat = "{0} perles";
+        public const string PackBonusFormat = "{0} perles  ·  dont {1} offertes";
+        public const string StoreNote =
+            "Les achats en euros arriveront avec la boutique du magasin d'applications.\n" +
+            "Aucune pub n'est imposée : elles restent un choix, toujours récompensé.";
+
         public const string MoneySuffix = "pièces";
         public const string RawLabel = "Brut";
         public const string CutLabel = "Découpé";
@@ -159,8 +206,52 @@ namespace Devside.FishingIdle.Game
         public static string Producer(string id) => ProducerNames.TryGetValue(id, out var name) ? name : id;
         public static string Upgrade(string id) => UpgradeNames.TryGetValue(id, out var name) ? name : id;
         public static string Species(string id) => SpeciesNames.TryGetValue(id, out var name) ? name : id;
+        public static string BoostName(string id) => BoostNames.TryGetValue(id, out var name) ? name : id;
+        public static string AdName(string id) => AdNames.TryGetValue(id, out var name) ? name : id;
+        public static string PackName(string id) => PackNames.TryGetValue(id, out var name) ? name : id;
+        public static string ShopIcon(string id) => ShopIcons.TryGetValue(id, out var icon) ? icon : null;
+
+        /// <summary>Ce que rapporte une pub, en une ligne.</summary>
+        public static string AdReward(RewardedAdDef def)
+        {
+            if (def.pearls > 0) return string.Format(AdPearlsFormat, def.pearls);
+            return string.IsNullOrEmpty(def.boostId) ? "" : BoostName(def.boostId);
+        }
+
+        /// <summary>Ce que fait un boost au repos : « ×2 pendant 4 h ».</summary>
+        public static string BoostIdle(BoostDef def)
+            => string.Format(BoostDurationFormat, def.multiplier, DurationText(def.durationSeconds));
+
+        static string DurationText(double seconds)
+        {
+            int minutes = (int)(seconds / 60);
+            return minutes >= 60 ? $"{minutes / 60} h" : $"{minutes} min";
+        }
+
         public static string EquipmentName(string id) => EquipmentNames.TryGetValue(id, out var name) ? name : id;
         public static string ChestName(string id) => ChestNames.TryGetValue(id, out var name) ? name : id;
+        public static string BoostName(string id) => BoostNames.TryGetValue(id, out var name) ? name : id;
+        public static string AdName(string id) => AdNames.TryGetValue(id, out var name) ? name : id;
+        public static string PackName(string id) => PackNames.TryGetValue(id, out var name) ? name : id;
+        public static string ShopIcon(string id) => ShopIcons.TryGetValue(id, out var icon) ? icon : null;
+
+        /// <summary>Ce que rapporte une pub, en une ligne.</summary>
+        public static string AdReward(RewardedAdDef def)
+        {
+            if (def.pearls > 0) return string.Format(AdPearlsFormat, def.pearls);
+            return string.IsNullOrEmpty(def.boostId) ? "" : BoostName(def.boostId);
+        }
+
+        /// <summary>Ce que fait un boost au repos : « ×2 pendant 4 h ».</summary>
+        public static string BoostIdle(BoostDef def)
+            => string.Format(BoostDurationFormat, def.multiplier, DurationText(def.durationSeconds));
+
+        static string DurationText(double seconds)
+        {
+            int minutes = (int)(seconds / 60);
+            return minutes >= 60 ? $"{minutes / 60} h" : $"{minutes} min";
+        }
+
         public static string EquipmentIcon(string id) => EquipmentIcons.TryGetValue(id, out var icon) ? icon : null;
 
         /// <summary>Nom d'un emplacement d'équipement.</summary>

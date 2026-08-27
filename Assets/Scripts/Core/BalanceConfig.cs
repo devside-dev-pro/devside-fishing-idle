@@ -92,6 +92,15 @@ namespace Devside.FishingIdle.Core
         public List<SpeciesDef> species = new List<SpeciesDef>();
         public List<EquipmentDef> equipment = new List<EquipmentDef>();
         public List<ChestDef> chests = new List<ChestDef>();
+        public List<BoostDef> boosts = new List<BoostDef>();
+        public List<RewardedAdDef> rewardedAds = new List<RewardedAdDef>();
+        public List<PearlPackDef> pearlPacks = new List<PearlPackDef>();
+
+        /// <summary>
+        /// Perles données à chaque nouvelle espèce du Poissodex. C'est le flux premium
+        /// du joueur gratuit : lent, mais réel — 13 espèces = 26 perles sur une partie.
+        /// </summary>
+        public double pearlsPerDiscovery = 2;
 
         public ProducerDef Producer(string id)
         {
@@ -233,19 +242,55 @@ namespace Devside.FishingIdle.Core
             // coffre d'or est le rêve tardif (une chance sur dix de légendaire).
             config.chests.Add(new ChestDef
             {
-                id = "chest_wood", cost = 5_000,
+                id = "chest_wood", cost = 5_000, pearlCost = 20,
                 rarityWeights = new double[] { 75, 22, 3, 0 },
             });
             config.chests.Add(new ChestDef
             {
-                id = "chest_silver", cost = 40_000,
+                id = "chest_silver", cost = 40_000, pearlCost = 60,
                 rarityWeights = new double[] { 40, 45, 14, 1 },
             });
             config.chests.Add(new ChestDef
             {
-                id = "chest_gold", cost = 300_000,
+                id = "chest_gold", cost = 300_000, pearlCost = 200,
                 rarityWeights = new double[] { 10, 40, 40, 10 },
             });
+
+            // Boutique. Deux boosts seulement : un qui accélère la pêche, un qui
+            // raccourcit les trajets — au-delà, le joueur ne sait plus ce qu'il achète.
+            // Le cumul est plafonné pour qu'on ne puisse pas empiler une journée de ×2.
+            config.boosts.Add(new BoostDef
+            {
+                id = "boost_net", kind = BoostKind.Fishing, multiplier = 2,
+                durationSeconds = 4 * 3600, maxStackSeconds = 8 * 3600, pearlCost = 50,
+            });
+            config.boosts.Add(new BoostDef
+            {
+                id = "boost_wind", kind = BoostKind.SailSpeed, multiplier = 1.5,
+                durationSeconds = 10 * 60, maxStackSeconds = 30 * 60, pearlCost = 15,
+            });
+
+            // Pubs récompensées : toujours opt-in, jamais d'interstitiel (business plan).
+            // Les délais de rechargement sont des valeurs de départ, à caler en beta.
+            config.rewardedAds.Add(new RewardedAdDef
+            {
+                id = "ad_net", boostId = "boost_net", cooldownSeconds = 30 * 60,
+            });
+            config.rewardedAds.Add(new RewardedAdDef
+            {
+                id = "ad_wind", boostId = "boost_wind", cooldownSeconds = 15 * 60,
+            });
+            config.rewardedAds.Add(new RewardedAdDef
+            {
+                id = "ad_pearl", pearls = 5, cooldownSeconds = 3600,
+            });
+
+            // Packs de perles : les prix affichés viendront du store à l'exécution ;
+            // ceux-ci ne servent qu'à la maquette (docs/BUSINESS-PLAN.md).
+            config.pearlPacks.Add(new PearlPackDef { id = "pack_s", pearls = 100, priceLabel = "4,99 €" });
+            config.pearlPacks.Add(new PearlPackDef { id = "pack_m", pearls = 220, bonusPearls = 30, priceLabel = "9,99 €" });
+            config.pearlPacks.Add(new PearlPackDef { id = "pack_l", pearls = 480, bonusPearls = 120, priceLabel = "19,99 €" });
+            config.pearlPacks.Add(new PearlPackDef { id = "pack_xl", pearls = 1300, bonusPearls = 500, priceLabel = "49,99 €" });
 
             return config;
         }

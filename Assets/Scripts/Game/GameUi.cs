@@ -31,6 +31,9 @@ namespace Devside.FishingIdle.Game
 
         /// <summary>Fond d'une pièce PORTÉE : elle doit sauter aux yeux dans la liste.</summary>
         static readonly Color WornRowBg = new Color(0.90f, 0.96f, 0.90f, 0.98f);
+
+        /// <summary>Bleu nacré de la monnaie premium (les perles, jamais des gemmes).</summary>
+        static readonly Color PearlBlue = new Color(0.36f, 0.63f, 0.86f);
         static readonly Color MoneyGreen = new Color(0.33f, 0.72f, 0.32f);
         static readonly Color BuyOrange = new Color(0.96f, 0.62f, 0.16f);
         static readonly Color CastGreen = new Color(0.35f, 0.76f, 0.31f);
@@ -51,6 +54,7 @@ namespace Devside.FishingIdle.Game
         }
 
         Text _moneyText;
+        Text _pearlText;
         Text _stocksText;
         Text _metaText;
         Text _holdText;
@@ -118,6 +122,30 @@ namespace Devside.FishingIdle.Game
             public Button action;
         }
 
+        class AdRow
+        {
+            public RewardedAdDef def;
+            public Text detail;
+            public Button action;
+            public Text actionLabel;
+        }
+
+        class BoostRow
+        {
+            public BoostDef def;
+            public Text detail;
+            public Button action;
+        }
+
+        class PearlChestRow
+        {
+            public ChestDef def;
+            public Button action;
+        }
+
+        readonly List<AdRow> _adRows = new List<AdRow>();
+        readonly List<BoostRow> _boostRows = new List<BoostRow>();
+        readonly List<PearlChestRow> _pearlChestRows = new List<PearlChestRow>();
         readonly List<EquipRow> _equipRows = new List<EquipRow>();
         readonly List<ChestRow> _chestRows = new List<ChestRow>();
 
@@ -188,6 +216,7 @@ namespace Devside.FishingIdle.Game
 
             if (_mapPanel.activeSelf) RefreshMap(config, state);
             if (_profilePanel.activeSelf) RefreshProfile(config, state);
+            if (_shopPanel.activeSelf) RefreshShop(config, state);
 
             HandleScenePointer();
         }
@@ -343,6 +372,7 @@ namespace Devside.FishingIdle.Game
         void RefreshHeader(BalanceConfig config, GameState state)
         {
             _moneyText.text = Numbers.Format(state.money);
+            _pearlText.text = Numbers.Format(state.pearls);
             _stocksText.text =
                 $"{GameTheme.RawLabel} {Numbers.Format(state.rawFish)}   ·   " +
                 $"{GameTheme.CutLabel} {Numbers.Format(state.cutFish)}   ·   " +
@@ -443,6 +473,35 @@ namespace Devside.FishingIdle.Game
             _moneyText = UiKit.CreateText("Money", moneyPill.transform, 60, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
             UiKit.AddOutline(_moneyText, 2f);
             UiKit.Stretch(_moneyText.rectTransform, 90, 24, 0, 0);
+
+            // Pastille de perles : la monnaie premium se voit en permanence, sinon
+            // personne ne sait qu'il en a (et la boutique n'a plus de raison d'exister).
+            var pearlPill = UiKit.CreateCard("PearlPill", header.transform, PearlBlue, shadow: false);
+            var pearlRt = pearlPill.rectTransform;
+            pearlRt.anchorMin = new Vector2(1f, 1f);
+            pearlRt.anchorMax = new Vector2(1f, 1f);
+            pearlRt.pivot = new Vector2(1f, 1f);
+            pearlRt.anchoredPosition = new Vector2(-14f, -14f);
+            pearlRt.sizeDelta = new Vector2(196f, 68f);
+
+            var pearlIcon = UiKit.Icon("pearl");
+            if (pearlIcon != null)
+            {
+                var icon = UiKit.CreateRect("Pearl", pearlPill.transform).gameObject.AddComponent<Image>();
+                icon.sprite = pearlIcon;
+                icon.preserveAspect = true;
+                icon.raycastTarget = false;
+                var rt = icon.rectTransform;
+                rt.anchorMin = new Vector2(0f, 0.5f);
+                rt.anchorMax = new Vector2(0f, 0.5f);
+                rt.pivot = new Vector2(0f, 0.5f);
+                rt.anchoredPosition = new Vector2(10f, 0f);
+                rt.sizeDelta = new Vector2(50f, 50f);
+            }
+
+            _pearlText = UiKit.CreateText("Pearls", pearlPill.transform, 34, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UiKit.AddOutline(_pearlText, 1.4f);
+            UiKit.Stretch(_pearlText.rectTransform, 64, 14, 0, 0);
 
             _stocksText = UiKit.CreateText("Stocks", header.transform, 34, TextDim, TextAnchor.MiddleCenter);
             UiKit.AnchorTop(_stocksText.rectTransform, 122, 44, 30);
@@ -902,19 +961,164 @@ namespace Devside.FishingIdle.Game
             }
         }
 
+        /// <summary>
+        /// La boutique : gratuit d'abord (pubs récompensées, toujours opt-in), puis les
+        /// boosts et les coffres en perles, et enfin les packs. L'ordre est délibéré —
+        /// un joueur doit pouvoir tout essayer sans payer avant de voir un prix.
+        /// </summary>
         void BuildShopPanel(Transform canvas)
         {
-            var panel = UiKit.CreateCard("ShopPanel", canvas, PanelBg);
-            UiKit.AnchorBottom(panel.rectTransform, BottomBarHeight + PrestigeBandHeight + 6, PanelHeight, 16);
+            var boot = GameBootstrap.Instance;
+            _shopPanel = BuildPanel(canvas, GameTheme.ShopTab, out var content);
 
-            AddPanelTitle(panel.transform, GameTheme.ShopTab);
+            AddSectionHeader(content, GameTheme.FreeSection);
+            foreach (var ad in boot.Config.rewardedAds) _adRows.Add(BuildAdRow(content, ad));
 
-            var message = UiKit.CreateText("Soon", panel.transform, 34, TextDim, TextAnchor.MiddleCenter);
-            message.text = GameTheme.ShopComingSoon;
-            UiKit.AnchorVerticalSpan(message.rectTransform, 90, 16, 40);
+            AddSectionHeader(content, GameTheme.BoostsSection);
+            foreach (var boost in boot.Config.boosts) _boostRows.Add(BuildBoostRow(content, boost));
 
-            panel.gameObject.SetActive(false);
-            _shopPanel = panel.gameObject;
+            AddSectionHeader(content, GameTheme.PearlChestsSection);
+            foreach (var chest in boot.Config.chests)
+            {
+                if (chest.pearlCost <= 0) continue;
+                _pearlChestRows.Add(BuildPearlChestRow(content, chest));
+            }
+
+            AddSectionHeader(content, GameTheme.PearlPacksSection);
+            foreach (var pack in boot.Config.pearlPacks) BuildPackRow(content, pack);
+
+            var note = UiKit.CreateText("Note", content, 24, TextDim, TextAnchor.UpperLeft);
+            note.text = GameTheme.StoreNote;
+            note.gameObject.AddComponent<LayoutElement>().preferredHeight = 110;
+        }
+
+        /// <summary>Ligne générique de boutique : icône, titre, détail, bouton d'action.</summary>
+        (Image card, Text title, Text detail, Button button, Text label) BuildStoreRow(
+            Transform parent, string iconName, string title, Color buttonColor)
+        {
+            var card = UiKit.CreateCard("Row", parent, RowBg, shadow: false);
+            card.gameObject.AddComponent<LayoutElement>().preferredHeight = 112;
+
+            var icon = UiKit.CreateRect("Icon", card.transform).gameObject.AddComponent<Image>();
+            icon.sprite = UiKit.Icon(iconName);
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
+            icon.rectTransform.anchorMin = new Vector2(0f, 0.5f);
+            icon.rectTransform.anchorMax = new Vector2(0f, 0.5f);
+            icon.rectTransform.sizeDelta = new Vector2(88f, 88f);
+            icon.rectTransform.anchoredPosition = new Vector2(62f, 0f);
+            icon.enabled = icon.sprite != null;
+
+            var name = UiKit.CreateText("Name", card.transform, 32, TextMain, TextAnchor.LowerLeft, FontStyle.Bold);
+            UiKit.Stretch(name.rectTransform, 120, 250, 16, 56);
+            name.text = title;
+
+            var detail = UiKit.CreateText("Detail", card.transform, 26, TextDim, TextAnchor.UpperLeft);
+            UiKit.Stretch(detail.rectTransform, 120, 250, 58, 14);
+
+            var (button, label, rect) = UiKit.CreateFancyButton("Act", card.transform, buttonColor, 26);
+            rect.anchorMin = new Vector2(1f, 0.5f);
+            rect.anchorMax = new Vector2(1f, 0.5f);
+            rect.sizeDelta = new Vector2(216f, 76f);
+            rect.anchoredPosition = new Vector2(-124f, 0f);
+            return (card, name, detail, button, label);
+        }
+
+        AdRow BuildAdRow(Transform parent, RewardedAdDef def)
+        {
+            var (_, _, detail, button, label) =
+                BuildStoreRow(parent, GameTheme.ShopIcon(def.id), GameTheme.AdName(def.id), CastGreen);
+            button.onClick.AddListener(() =>
+            {
+                var boot = GameBootstrap.Instance;
+                // Pas encore de SDK de pub : on encaisse directement la récompense.
+                // Quand Unity Ads sera branché, seul CE point d'appel change — le Core
+                // applique déjà la récompense après coup, jamais avant.
+                if (Shop.ClaimAdReward(boot.Config, boot.State, def.id))
+                    ShowBanner(string.Format(GameTheme.AdClaimedFormat, GameTheme.AdName(def.id)));
+            });
+            return new AdRow { def = def, detail = detail, action = button, actionLabel = label };
+        }
+
+        BoostRow BuildBoostRow(Transform parent, BoostDef def)
+        {
+            var (_, _, detail, button, label) =
+                BuildStoreRow(parent, GameTheme.ShopIcon(def.id), GameTheme.BoostName(def.id), TabBlue);
+            label.text = $"{Numbers.Format(def.pearlCost)} {GameTheme.PearlSuffix}";
+            button.onClick.AddListener(() =>
+            {
+                var boot = GameBootstrap.Instance;
+                if (Shop.BuyBoost(boot.Config, boot.State, def.id))
+                    ShowBanner(string.Format(GameTheme.BoostStartedFormat, GameTheme.BoostName(def.id)));
+            });
+            return new BoostRow { def = def, detail = detail, action = button };
+        }
+
+        PearlChestRow BuildPearlChestRow(Transform parent, ChestDef def)
+        {
+            var (_, _, detail, button, label) =
+                BuildStoreRow(parent, GameTheme.EquipmentIcon(def.id), GameTheme.ChestName(def.id), PrestigeOrange);
+            label.text = $"{Numbers.Format(def.pearlCost)} {GameTheme.PearlSuffix}";
+            detail.text = GameTheme.ChestPearlHint;
+            button.onClick.AddListener(() =>
+            {
+                var boot = GameBootstrap.Instance;
+                var result = Shop.OpenChestWithPearls(boot.Config, boot.State, def.id, Random.value);
+                if (result == null) return;
+                ShowBanner(string.Format(GameTheme.ChestOpenedFormat,
+                    GameTheme.EquipmentName(result.equipmentId),
+                    result.isNew ? GameTheme.ChestNewPiece : GameTheme.ChestDuplicate));
+            });
+            return new PearlChestRow { def = def, action = button };
+        }
+
+        /// <summary>
+        /// Un pack de perles. Le bouton reste INACTIF : tant qu'un vrai magasin
+        /// (Unity IAP + fiches store) n'est pas branché, il n'y a pas d'achat à simuler.
+        /// </summary>
+        void BuildPackRow(Transform parent, PearlPackDef def)
+        {
+            var (_, _, detail, button, label) =
+                BuildStoreRow(parent, "pearl", GameTheme.PackName(def.id), TabBlue);
+            double total = def.pearls + def.bonusPearls;
+            detail.text = def.bonusPearls > 0
+                ? string.Format(GameTheme.PackBonusFormat, Numbers.Format(total), Numbers.Format(def.bonusPearls))
+                : string.Format(GameTheme.PackPlainFormat, Numbers.Format(total));
+            label.text = def.priceLabel;
+            button.interactable = false;
+        }
+
+        /// <summary>Compte à rebours lisible : « 3 min 20 s », « 1 h 05 ».</summary>
+        static string FormatDelay(double seconds)
+        {
+            int total = Mathf.Max(0, Mathf.CeilToInt((float)seconds));
+            if (total >= 3600) return $"{total / 3600} h {(total % 3600) / 60:00}";
+            if (total >= 60) return $"{total / 60} min {total % 60:00} s";
+            return $"{total} s";
+        }
+
+        void RefreshShop(BalanceConfig config, GameState state)
+        {
+            foreach (var row in _adRows)
+            {
+                double left = Shop.AdCooldownLeft(state, row.def.id);
+                bool ready = left <= 0;
+                row.action.interactable = ready;
+                row.actionLabel.text = ready ? GameTheme.WatchAdAction : FormatDelay(left);
+                row.detail.text = GameTheme.AdReward(row.def);
+            }
+
+            foreach (var row in _boostRows)
+            {
+                double left = Shop.BoostSecondsLeft(state, row.def.id);
+                row.action.interactable = state.pearls >= row.def.pearlCost;
+                row.detail.text = left > 0
+                    ? string.Format(GameTheme.BoostActiveFormat, FormatDelay(left))
+                    : GameTheme.BoostIdle(row.def);
+            }
+
+            foreach (var row in _pearlChestRows)
+                row.action.interactable = state.pearls >= row.def.pearlCost;
         }
 
         GameObject BuildPanel(Transform canvas, string title, out RectTransform content)

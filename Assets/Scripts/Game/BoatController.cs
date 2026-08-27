@@ -65,7 +65,13 @@ namespace Devside.FishingIdle.Game
             float throttle = Mathf.Min(1f, direction.magnitude);
             direction.Normalize();
 
-            float speed = (BaseSpeed + SpeedPerZone * maxZone) * throttle;
+            // « Vent dans les voiles » : le boost de navigation vit dans le Core, mais
+            // c'est ici qu'il se ressent (les trajets s'allongent avec l'archipel).
+            var boot = GameBootstrap.Instance;
+            float wind = boot == null
+                ? 1f
+                : (float)Shop.BoostMultiplier(boot.Config, boot.State, BoostKind.SailSpeed);
+            float speed = (BaseSpeed + SpeedPerZone * maxZone) * throttle * wind;
             var next = Root.position + direction * (speed * Time.deltaTime);
 
             // La coque borne le rayon navigable — au-delà, on bute sur la frontière.

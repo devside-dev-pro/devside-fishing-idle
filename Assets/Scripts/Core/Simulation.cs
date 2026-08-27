@@ -27,6 +27,10 @@ namespace Devside.FishingIdle.Core
         {
             if (dt <= 0) return;
 
+            // Boosts et délais de pub s'écoulent avec le temps de jeu (et donc aussi
+            // pendant la simulation hors-ligne : un boost temporel se consomme).
+            Shop.Tick(state, dt);
+
             bool selling = allowAutoSell && state.autoSellUnlocked;
             double capacity = Multipliers.HoldCapacity(config, state);
 
@@ -84,6 +88,9 @@ namespace Devside.FishingIdle.Core
                 amount *= species.valueMultiplier;
                 result.speciesId = species.id;
                 result.newDiscovery = Catching.RegisterCatch(state, species.id);
+                // Le Poissodex est la source premium du joueur gratuit : chaque
+                // première prise d'une espèce rapporte quelques perles.
+                if (result.newDiscovery) state.pearls += config.pearlsPerDiscovery;
             }
             if (amount > space) amount = space;
             result.amount = amount;

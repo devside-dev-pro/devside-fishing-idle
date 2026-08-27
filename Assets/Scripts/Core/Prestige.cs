@@ -39,6 +39,10 @@ namespace Devside.FishingIdle.Core
                 // L'équipement aussi : ce qu'on a trouvé et porté ne se rejoue pas.
                 equipment = state.equipment,
                 equippedBySlot = state.equippedBySlot,
+                // Les perles sont une monnaie premium : un reset ne les brûle jamais.
+                pearls = state.pearls,
+                boosts = state.boosts,
+                adCooldowns = state.adCooldowns,
             };
             state.CopyFrom(fresh);
             return gained;
