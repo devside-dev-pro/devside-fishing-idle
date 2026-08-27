@@ -51,6 +51,7 @@ namespace Devside.FishingIdle.Game
         /// </summary>
         public static Sprite Icon(string name)
         {
+            if (string.IsNullOrEmpty(name)) return null;
             if (IconCache.TryGetValue(name, out var cached)) return cached;
             var tex = Resources.Load<Texture2D>("UI/Icons/" + name);
             Sprite sprite = null;

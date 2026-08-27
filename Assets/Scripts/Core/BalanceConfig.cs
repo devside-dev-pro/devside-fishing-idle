@@ -90,6 +90,8 @@ namespace Devside.FishingIdle.Core
         public List<ProducerDef> producers = new List<ProducerDef>();
         public List<UpgradeDef> upgrades = new List<UpgradeDef>();
         public List<SpeciesDef> species = new List<SpeciesDef>();
+        public List<EquipmentDef> equipment = new List<EquipmentDef>();
+        public List<ChestDef> chests = new List<ChestDef>();
 
         public ProducerDef Producer(string id)
         {
@@ -209,7 +211,53 @@ namespace Devside.FishingIdle.Core
             config.species.Add(new SpeciesDef { id = "kraken_spawn", minDepthLevel = 3, weight = 6, valueMultiplier = 30, discoveryBonus = 1.08 });
             config.species.Add(new SpeciesDef { id = "leviathan", minDepthLevel = 3, weight = 1, valueMultiplier = 60, discoveryBonus = 1.12 });
 
+            // Équipement du capitaine : quatre emplacements, une pièce portée par
+            // emplacement, et des bonus ADDITIFS volontairement modestes (le cœur de
+            // l'économie reste les producteurs). Chaque emplacement a sa spécialité,
+            // pour qu'un choix de tenue se lise en une phrase.
+            AddEquipment(config, "rod_bamboo", EquipmentSlot.Rod, Rarity.Common, EquipmentEffect.ManualCatch, 0.02);
+            AddEquipment(config, "rod_carbon", EquipmentSlot.Rod, Rarity.Rare, EquipmentEffect.ManualCatch, 0.04);
+            AddEquipment(config, "rod_abyssal", EquipmentSlot.Rod, Rarity.Legendary, EquipmentEffect.ManualCatch, 0.12);
+            AddEquipment(config, "reel_basic", EquipmentSlot.Reel, Rarity.Common, EquipmentEffect.ProducerRate, 0.02);
+            AddEquipment(config, "reel_precision", EquipmentSlot.Reel, Rarity.Rare, EquipmentEffect.ProducerRate, 0.04);
+            AddEquipment(config, "reel_storm", EquipmentSlot.Reel, Rarity.Epic, EquipmentEffect.ProducerRate, 0.07);
+            AddEquipment(config, "bait_worm", EquipmentSlot.Bait, Rarity.Common, EquipmentEffect.SellPrice, 0.02);
+            AddEquipment(config, "bait_lure", EquipmentSlot.Bait, Rarity.Rare, EquipmentEffect.SellPrice, 0.04);
+            AddEquipment(config, "bait_glow", EquipmentSlot.Bait, Rarity.Epic, EquipmentEffect.SellPrice, 0.07);
+            AddEquipment(config, "outfit_hat", EquipmentSlot.Outfit, Rarity.Common, EquipmentEffect.HoldCapacity, 0.02);
+            AddEquipment(config, "outfit_raincoat", EquipmentSlot.Outfit, Rarity.Rare, EquipmentEffect.HoldCapacity, 0.04);
+            AddEquipment(config, "outfit_captain", EquipmentSlot.Outfit, Rarity.Legendary, EquipmentEffect.HoldCapacity, 0.12);
+
+            // Coffres : trois paliers de prix, trois profils de chance. Le coffre en bois
+            // est le tout-venant qui fait monter les pièces communes par doublons ; le
+            // coffre d'or est le rêve tardif (une chance sur dix de légendaire).
+            config.chests.Add(new ChestDef
+            {
+                id = "chest_wood", cost = 5_000,
+                rarityWeights = new double[] { 75, 22, 3, 0 },
+            });
+            config.chests.Add(new ChestDef
+            {
+                id = "chest_silver", cost = 40_000,
+                rarityWeights = new double[] { 40, 45, 14, 1 },
+            });
+            config.chests.Add(new ChestDef
+            {
+                id = "chest_gold", cost = 300_000,
+                rarityWeights = new double[] { 10, 40, 40, 10 },
+            });
+
             return config;
+        }
+
+        static void AddEquipment(BalanceConfig config, string id, EquipmentSlot slot,
+            Rarity rarity, EquipmentEffect effect, double bonusPerLevel)
+        {
+            config.equipment.Add(new EquipmentDef
+            {
+                id = id, slot = slot, rarity = rarity, effect = effect,
+                bonusPerLevel = bonusPerLevel, maxLevel = 10,
+            });
         }
     }
 }

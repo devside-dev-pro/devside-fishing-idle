@@ -25,6 +25,8 @@ Le shader d'eau (`Assets/Resources/Shaders/StylizedWater.shader`) et tout le cod
 
 ## Assets générés par IA
 
-Les modèles de `Assets/Resources/Art/Custom/` (13 espèces du Poissodex + props) sont
-générés pour ce projet via Higgsfield (images nano banana → maillages 3D Meshy),
-avec le compte du studio. Recette et paramètres : `docs/ASSET-PIPELINE.md`.
+Les modèles de `Assets/Resources/Art/Custom/` (13 espèces du Poissodex + props + navires)
+et les icônes d'interface de `Assets/Resources/UI/Icons/` sont générés pour ce projet via
+Higgsfield (images nano banana → maillages 3D Meshy pour la 3D, planches d'icônes
+découpées pour l'UI), avec le compte du studio. Recette et paramètres :
+`docs/ASSET-PIPELINE.md`.

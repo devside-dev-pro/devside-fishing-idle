@@ -36,6 +36,9 @@ namespace Devside.FishingIdle.Core
                 lastSeenUnixSeconds = state.lastSeenUnixSeconds,
                 // Le Poissodex est permanent : les découvertes survivent au reset.
                 discoveredSpecies = state.discoveredSpecies,
+                // L'équipement aussi : ce qu'on a trouvé et porté ne se rejoue pas.
+                equipment = state.equipment,
+                equippedBySlot = state.equippedBySlot,
             };
             state.CopyFrom(fresh);
             return gained;
