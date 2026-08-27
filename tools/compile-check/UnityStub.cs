@@ -176,6 +176,8 @@ namespace UnityEngine
         public static float time => 0f;
         public static float deltaTime => 0f;
         public static float unscaledTime => 0f;
+        public static float unscaledDeltaTime => 0f;
+        public static float timeScale { get; set; }
     }
 
     public static class Screen
@@ -580,6 +582,14 @@ namespace UnityEngine
         public Rect rect => default;
     }
 
+    public class CanvasGroup : Behaviour
+    {
+        public float alpha { get; set; }
+        public bool interactable { get; set; }
+        public bool blocksRaycasts { get; set; }
+        public bool ignoreParentGroups { get; set; }
+    }
+
     public class Canvas : Behaviour
     {
         public RenderMode renderMode { get; set; }
@@ -756,6 +766,14 @@ namespace UnityEngine.EventSystems
     }
 
     public class StandaloneInputModule : Behaviour { }
+
+    public interface IEventSystemHandler { }
+    public interface IPointerDownHandler : IEventSystemHandler { void OnPointerDown(PointerEventData eventData); }
+    public interface IPointerUpHandler : IEventSystemHandler { void OnPointerUp(PointerEventData eventData); }
+    public interface IPointerClickHandler : IEventSystemHandler { void OnPointerClick(PointerEventData eventData); }
+    public interface IPointerEnterHandler : IEventSystemHandler { void OnPointerEnter(PointerEventData eventData); }
+    public interface IPointerExitHandler : IEventSystemHandler { void OnPointerExit(PointerEventData eventData); }
+    public interface IDragHandler : IEventSystemHandler { void OnDrag(PointerEventData eventData); }
     public class PointerEventData { public PointerEventData(EventSystem eventSystem) { } }
 }
 

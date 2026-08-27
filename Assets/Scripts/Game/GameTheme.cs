@@ -110,6 +110,25 @@ namespace Devside.FishingIdle.Game
             ["pack_xl"] = "Trésor de perles",
         };
 
+        /// <summary>
+        /// Icône du kit pour chaque ligne de l'onglet Bateau (producteurs et
+        /// améliorations) : une ligne de jeu commence par une image, pas par du texte.
+        /// </summary>
+        static readonly Dictionary<string, string> RowIcons = new Dictionary<string, string>
+        {
+            ["fisherman_t1"] = "crew",
+            ["fisherman_t2"] = "crew",
+            ["fisherman_t3"] = "hold",
+            ["cutting_station"] = "fish_raw",
+            ["fillet_station"] = "fillet",
+            ["rod"] = "eq_rod",
+            ["crew_training"] = "crew",
+            ["market_deals"] = "deals",
+            ["auto_sell"] = "market",
+            ["cargo_hold"] = "hold",
+            ["boat_hull"] = "hull",
+        };
+
         /// <summary>Icônes du kit UI pour les entrées de boutique.</summary>
         static readonly Dictionary<string, string> ShopIcons = new Dictionary<string, string>
         {
@@ -211,6 +230,7 @@ namespace Devside.FishingIdle.Game
         public static string BoostName(string id) => BoostNames.TryGetValue(id, out var name) ? name : id;
         public static string AdName(string id) => AdNames.TryGetValue(id, out var name) ? name : id;
         public static string PackName(string id) => PackNames.TryGetValue(id, out var name) ? name : id;
+        public static string RowIcon(string id) => RowIcons.TryGetValue(id, out var icon) ? icon : null;
         public static string ShopIcon(string id) => ShopIcons.TryGetValue(id, out var icon) ? icon : null;
 
         /// <summary>Ce que rapporte une pub, en une ligne.</summary>

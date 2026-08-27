@@ -34,6 +34,16 @@ namespace Devside.FishingIdle.Game
 
         /// <summary>Bleu nacré de la monnaie premium (les perles, jamais des gemmes).</summary>
         static readonly Color PearlBlue = new Color(0.36f, 0.63f, 0.86f);
+
+        /// <summary>Bande d'intertitre : teal profond, la couleur de structure du jeu.</summary>
+        static readonly Color SectionBg = new Color(0.09f, 0.42f, 0.50f);
+
+        /// <summary>Bande d'emplacement : la même en très clair, pour hiérarchiser sans alourdir.</summary>
+        static readonly Color SlotBandBg = new Color(0.85f, 0.92f, 0.93f);
+
+        /// <summary>Pastille d'icône : la couleur de l'action, éclaircie pour rester un fond.</summary>
+        static Color BadgeTint(Color action)
+            => Color.Lerp(action, new Color(0.96f, 0.97f, 0.98f), 0.55f);
         static readonly Color MoneyGreen = new Color(0.33f, 0.72f, 0.32f);
         static readonly Color BuyOrange = new Color(0.96f, 0.62f, 0.16f);
         static readonly Color CastGreen = new Color(0.35f, 0.76f, 0.31f);
@@ -55,6 +65,13 @@ namespace Devside.FishingIdle.Game
 
         Text _moneyText;
         Text _pearlText;
+        RectTransform _moneyPill;
+        RectTransform _pearlPill;
+
+        /// <summary>Valeur affichée du compteur d'argent : elle court après la vraie.</summary>
+        double _displayedMoney;
+        double _lastMoney;
+        double _lastPearls;
         Text _stocksText;
         Text _metaText;
         Text _holdText;
@@ -270,7 +287,9 @@ namespace Devside.FishingIdle.Game
         public void ShowBanner(string text)
         {
             _catchBanner.text = text;
+            bool wasHidden = !_catchBannerCard.activeSelf;
             _catchBannerCard.SetActive(true);
+            if (wasHidden) UiTween.Pop((RectTransform)_catchBannerCard.transform, 0.85f, 0.2f);
             _catchBannerUntil = Time.time + 2.2f;
         }
 
@@ -371,8 +390,20 @@ namespace Devside.FishingIdle.Game
 
         void RefreshHeader(BalanceConfig config, GameState state)
         {
-            _moneyText.text = Numbers.Format(state.money);
+            // Les compteurs MONTENT vers leur valeur au lieu de sauter, et la pilule
+            // tressaille à chaque gain : c'est ce qui rend une vente satisfaisante.
+            if (_displayedMoney <= 0 && state.money > 0) _displayedMoney = state.money;
+            double gap = state.money - _displayedMoney;
+            if (System.Math.Abs(gap) < 1) _displayedMoney = state.money;
+            else _displayedMoney += gap * Mathf.Clamp01(Time.deltaTime * 9f);
+            _moneyText.text = Numbers.Format(_displayedMoney);
+
+            if (state.money > _lastMoney + 0.5) UiTween.Punch(_moneyPill, 0.07f, 0.2f);
+            _lastMoney = state.money;
+
             _pearlText.text = Numbers.Format(state.pearls);
+            if (state.pearls > _lastPearls + 0.5) UiTween.Punch(_pearlPill, 0.16f, 0.3f);
+            _lastPearls = state.pearls;
             _stocksText.text =
                 $"{GameTheme.RawLabel} {Numbers.Format(state.rawFish)}   ·   " +
                 $"{GameTheme.CutLabel} {Numbers.Format(state.cutFish)}   ·   " +
@@ -470,6 +501,7 @@ namespace Devside.FishingIdle.Game
                 iconRt.sizeDelta = new Vector2(68f, 68f);
             }
 
+            _moneyPill = pillRt;
             _moneyText = UiKit.CreateText("Money", moneyPill.transform, 60, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
             UiKit.AddOutline(_moneyText, 2f);
             UiKit.Stretch(_moneyText.rectTransform, 90, 24, 0, 0);
@@ -499,6 +531,7 @@ namespace Devside.FishingIdle.Game
                 rt.sizeDelta = new Vector2(50f, 50f);
             }
 
+            _pearlPill = pearlRt;
             _pearlText = UiKit.CreateText("Pearls", pearlPill.transform, 34, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
             UiKit.AddOutline(_pearlText, 1.4f);
             UiKit.Stretch(_pearlText.rectTransform, 64, 14, 0, 0);
@@ -587,7 +620,7 @@ namespace Devside.FishingIdle.Game
                 string id = def.id;
                 _producerRows[id] = CreateShopRow(boatContent,
                     () => Economy.TryBuyProducer(boot.Config, boot.State, id),
-                    alternate: rowIndex++ % 2 == 1, withSubLabel: true);
+                    GameTheme.RowIcon(id), alternate: rowIndex++ % 2 == 1, withSubLabel: true);
             }
             AddSectionHeader(boatContent, GameTheme.UpgradesSection);
             rowIndex = 0;
@@ -596,7 +629,7 @@ namespace Devside.FishingIdle.Game
                 string id = def.id;
                 _upgradeRows[id] = CreateShopRow(boatContent,
                     () => Economy.TryBuyUpgrade(boot.Config, boot.State, id),
-                    alternate: rowIndex++ % 2 == 1);
+                    GameTheme.RowIcon(id), alternate: rowIndex++ % 2 == 1);
             }
 
             BuildMapPanel(canvas);
@@ -604,11 +637,18 @@ namespace Devside.FishingIdle.Game
             BuildShopPanel(canvas);
         }
 
+        /// <summary>
+        /// Intertitre de liste : une bande teintée, pas un texte flottant. Un titre posé
+        /// sur le vide se lit mal et se fait rogner par le masque de la liste (retour
+        /// playtest : « PÂT », « NUE ») ; dans une bande, il tient sa place.
+        /// </summary>
         static void AddSectionHeader(Transform parent, string title)
         {
-            var text = UiKit.CreateText("Section", parent, 30, new Color(0.05f, 0.45f, 0.52f), TextAnchor.MiddleCenter, FontStyle.Bold);
-            text.text = title;
-            text.gameObject.AddComponent<LayoutElement>().preferredHeight = 52;
+            var band = UiKit.CreateCard("Section", parent, SectionBg, shadow: false);
+            band.gameObject.AddComponent<LayoutElement>().preferredHeight = 62;
+            var text = UiKit.CreateText("Label", band.transform, 28, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            text.text = title.Replace("—", "").Trim().ToUpperInvariant();
+            UiKit.Stretch(text.rectTransform, 20, 20, 0, 0);
         }
 
         /// <summary>
@@ -777,43 +817,34 @@ namespace Devside.FishingIdle.Game
             }
         }
 
-        /// <summary>Petit intitulé d'emplacement, plus discret qu'un titre de section.</summary>
+        /// <summary>Intitulé d'emplacement : même bande, ton plus clair — il structure sans crier.</summary>
         void AddSlotHeader(Transform parent, string title)
         {
-            var label = UiKit.CreateText("Slot", parent, 28, TextDim, TextAnchor.MiddleLeft, FontStyle.Bold);
+            var band = UiKit.CreateCard("Slot", parent, SlotBandBg, shadow: false);
+            band.gameObject.AddComponent<LayoutElement>().preferredHeight = 52;
+            var label = UiKit.CreateText("Label", band.transform, 26, SectionBg, TextAnchor.MiddleLeft, FontStyle.Bold);
             label.text = title.ToUpperInvariant();
-            label.gameObject.AddComponent<LayoutElement>().preferredHeight = 46;
+            UiKit.Stretch(label.rectTransform, 26, 20, 0, 0);
         }
 
         EquipRow BuildEquipRow(Transform parent, EquipmentDef def)
         {
             var card = UiKit.CreateCard("Equip", parent, RowBg, shadow: false);
-            card.gameObject.AddComponent<LayoutElement>().preferredHeight = 112;
+            card.gameObject.AddComponent<LayoutElement>().preferredHeight = 116;
+            UiKit.AddSoftShadow(card);
 
-            // Pastille de rareté + icône du kit : la ligne se lit sans lire.
-            var badge = UiKit.CreateRect("Badge", card.transform).gameObject.AddComponent<Image>();
-            badge.sprite = UiKit.Rounded;
-            badge.type = Image.Type.Sliced;
-            badge.color = RarityColors[(int)def.rarity];
-            badge.raycastTarget = false;
-            badge.rectTransform.anchorMin = new Vector2(0f, 0.5f);
-            badge.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-            badge.rectTransform.sizeDelta = new Vector2(88f, 88f);
-            badge.rectTransform.anchoredPosition = new Vector2(64f, 0f);
-
-            var icon = UiKit.CreateRect("Icon", badge.transform).gameObject.AddComponent<Image>();
-            icon.sprite = UiKit.Icon(GameTheme.EquipmentIcon(def.id));
-            icon.preserveAspect = true;
-            icon.raycastTarget = false;
-            UiKit.Stretch(icon.rectTransform, 8, 8, 8, 8);
-            icon.enabled = icon.sprite != null;
+            // Pastille ronde à la couleur de la rareté : la ligne se lit sans lire.
+            var badge = UiKit.CreateIconBadge(card.transform,
+                UiKit.Icon(GameTheme.EquipmentIcon(def.id)), RarityColors[(int)def.rarity], 86f);
+            badge.rectTransform.anchoredPosition = new Vector2(66f, 0f);
+            var icon = badge.transform.Find("Icon").GetComponent<Image>();
 
             var name = UiKit.CreateText("Name", card.transform, 32, TextMain, TextAnchor.LowerLeft, FontStyle.Bold);
-            UiKit.Stretch(name.rectTransform, 122, 250, 16, 56);
+            UiKit.Stretch(name.rectTransform, 124, 250, 18, 58);
             name.text = GameTheme.EquipmentName(def.id);
 
             var detail = UiKit.CreateText("Detail", card.transform, 26, TextDim, TextAnchor.UpperLeft);
-            UiKit.Stretch(detail.rectTransform, 122, 250, 58, 14);
+            UiKit.Stretch(detail.rectTransform, 124, 250, 60, 16);
 
             var (button, label, rect) = UiKit.CreateFancyButton("Act", card.transform, BuyOrange, 26);
             rect.anchorMin = new Vector2(1f, 0.5f);
@@ -849,24 +880,19 @@ namespace Devside.FishingIdle.Game
             foreach (var chest in config.chests)
             {
                 var card = UiKit.CreateCard("Chest", content, RowBg, shadow: false);
-                card.gameObject.AddComponent<LayoutElement>().preferredHeight = 112;
+                card.gameObject.AddComponent<LayoutElement>().preferredHeight = 116;
+                UiKit.AddSoftShadow(card);
 
-                var icon = UiKit.CreateRect("Icon", card.transform).gameObject.AddComponent<Image>();
-                icon.sprite = UiKit.Icon(GameTheme.EquipmentIcon(chest.id));
-                icon.preserveAspect = true;
-                icon.raycastTarget = false;
-                icon.rectTransform.anchorMin = new Vector2(0f, 0.5f);
-                icon.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-                icon.rectTransform.sizeDelta = new Vector2(92f, 92f);
-                icon.rectTransform.anchoredPosition = new Vector2(64f, 0f);
-                icon.enabled = icon.sprite != null;
+                var badge = UiKit.CreateIconBadge(card.transform,
+                    UiKit.Icon(GameTheme.EquipmentIcon(chest.id)), PrestigeOrange, 86f);
+                badge.rectTransform.anchoredPosition = new Vector2(66f, 0f);
 
                 var name = UiKit.CreateText("Name", card.transform, 32, TextMain, TextAnchor.LowerLeft, FontStyle.Bold);
-                UiKit.Stretch(name.rectTransform, 122, 250, 16, 56);
+                UiKit.Stretch(name.rectTransform, 124, 250, 18, 58);
                 name.text = GameTheme.ChestName(chest.id);
 
                 var price = UiKit.CreateText("Price", card.transform, 26, TextDim, TextAnchor.UpperLeft);
-                UiKit.Stretch(price.rectTransform, 122, 250, 58, 14);
+                UiKit.Stretch(price.rectTransform, 124, 250, 60, 16);
                 price.text = $"{Numbers.Format(chest.cost)} {GameTheme.MoneySuffix}";
 
                 var (button, label, rect) = UiKit.CreateFancyButton("Open", card.transform, PrestigeOrange, 26);
@@ -997,24 +1023,18 @@ namespace Devside.FishingIdle.Game
             Transform parent, string iconName, string title, Color buttonColor)
         {
             var card = UiKit.CreateCard("Row", parent, RowBg, shadow: false);
-            card.gameObject.AddComponent<LayoutElement>().preferredHeight = 112;
+            card.gameObject.AddComponent<LayoutElement>().preferredHeight = 116;
+            UiKit.AddSoftShadow(card);
 
-            var icon = UiKit.CreateRect("Icon", card.transform).gameObject.AddComponent<Image>();
-            icon.sprite = UiKit.Icon(iconName);
-            icon.preserveAspect = true;
-            icon.raycastTarget = false;
-            icon.rectTransform.anchorMin = new Vector2(0f, 0.5f);
-            icon.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-            icon.rectTransform.sizeDelta = new Vector2(88f, 88f);
-            icon.rectTransform.anchoredPosition = new Vector2(62f, 0f);
-            icon.enabled = icon.sprite != null;
+            var badge = UiKit.CreateIconBadge(card.transform, UiKit.Icon(iconName), BadgeTint(buttonColor), 86f);
+            badge.rectTransform.anchoredPosition = new Vector2(66f, 0f);
 
             var name = UiKit.CreateText("Name", card.transform, 32, TextMain, TextAnchor.LowerLeft, FontStyle.Bold);
-            UiKit.Stretch(name.rectTransform, 120, 250, 16, 56);
+            UiKit.Stretch(name.rectTransform, 124, 250, 18, 58);
             name.text = title;
 
             var detail = UiKit.CreateText("Detail", card.transform, 26, TextDim, TextAnchor.UpperLeft);
-            UiKit.Stretch(detail.rectTransform, 120, 250, 58, 14);
+            UiKit.Stretch(detail.rectTransform, 124, 250, 60, 16);
 
             var (button, label, rect) = UiKit.CreateFancyButton("Act", card.transform, buttonColor, 26);
             rect.anchorMin = new Vector2(1f, 0.5f);
@@ -1121,6 +1141,8 @@ namespace Devside.FishingIdle.Game
         {
             var panel = UiKit.CreateCard("Panel", canvas, PanelBg);
             UiKit.AnchorBottom(panel.rectTransform, BottomBarHeight + PrestigeBandHeight + 6, PanelHeight, 16);
+            // Le panneau monte et grossit en s'ouvrant au lieu d'apparaître d'un bloc.
+            panel.gameObject.AddComponent<PanelAnimator>();
 
             AddPanelTitle(panel.transform, title);
 
@@ -1181,7 +1203,13 @@ namespace Devside.FishingIdle.Game
             var (button, text, rect) = UiKit.CreateFancyButton(name, bar, TabBlue, 26, icon);
             text.text = label;
             SetBarSlot(rect, xMin, xMax);
-            button.onClick.AddListener(() => onClick());
+            button.onClick.AddListener(() =>
+            {
+                // Le pouce a besoin de savoir que l'appui a « pris » avant même que le
+                // panneau s'ouvre : la vignette rebondit tout de suite.
+                UiTween.Punch(rect, 0.08f, 0.16f);
+                onClick();
+            });
         }
 
         static void SetBarSlot(RectTransform rt, float xMin, float xMax)
@@ -1205,17 +1233,26 @@ namespace Devside.FishingIdle.Game
             _offlineTextUntil = Time.time + 8f; // il restait affiché pour toujours (retour playtest)
         }
 
-        ShopRow CreateShopRow(Transform parent, System.Action onBuy, bool alternate = false, bool withSubLabel = false)
+        ShopRow CreateShopRow(Transform parent, System.Action onBuy, string iconName,
+            bool alternate = false, bool withSubLabel = false)
         {
-            var card = UiKit.CreateCard("Row", parent,
-                alternate ? new Color(1f, 1f, 1f, 0.045f) : RowBg, shadow: false);
-            card.gameObject.AddComponent<LayoutElement>().preferredHeight = 122;
+            // Toutes les cartes sont blanches et posées sur le fond crème : l'alternance
+            // de teinte se lisait comme un tableau de tableur. Le relief (ombre douce)
+            // sépare les lignes bien mieux qu'un fond gris sur deux.
+            var card = UiKit.CreateCard("Row", parent, RowBg, shadow: false);
+            card.gameObject.AddComponent<LayoutElement>().preferredHeight = 126;
+            UiKit.AddSoftShadow(card);
 
-            var label = UiKit.CreateText("Name", card.transform, 36, TextMain, TextAnchor.MiddleLeft, FontStyle.Bold);
+            // Vignette : l'icône de l'entrée, posée sur une pastille ronde. Le nom est
+            // repoussé à sa droite — une ligne de jeu commence par une image.
+            var badge = UiKit.CreateIconBadge(card.transform, UiKit.Icon(iconName), BadgeTint(BuyOrange), 84f);
+            badge.rectTransform.anchoredPosition = new Vector2(64f, 0f);
+
+            var label = UiKit.CreateText("Name", card.transform, 34, TextMain, TextAnchor.MiddleLeft, FontStyle.Bold);
             var labelRt = label.rectTransform;
             labelRt.anchorMin = new Vector2(0f, withSubLabel ? 0.42f : 0f);
             labelRt.anchorMax = Vector2.one;
-            labelRt.offsetMin = new Vector2(30f, 0f);
+            labelRt.offsetMin = new Vector2(120f, 0f);
             labelRt.offsetMax = new Vector2(-330f, withSubLabel ? -6f : 0f);
 
             Text subLabel = null;
@@ -1225,7 +1262,7 @@ namespace Devside.FishingIdle.Game
                 var subRt = subLabel.rectTransform;
                 subRt.anchorMin = Vector2.zero;
                 subRt.anchorMax = new Vector2(1f, 0.42f);
-                subRt.offsetMin = new Vector2(30f, 8f);
+                subRt.offsetMin = new Vector2(120f, 8f);
                 subRt.offsetMax = new Vector2(-330f, 0f);
             }
 
@@ -1237,7 +1274,11 @@ namespace Devside.FishingIdle.Game
             buttonRect.sizeDelta = new Vector2(300f, 94f);
             button.onClick.AddListener(() => onBuy());
 
-            return new ShopRow { root = card.gameObject, label = label, subLabel = subLabel, button = button, buttonLabel = buttonLabel };
+            return new ShopRow
+            {
+                root = card.gameObject, label = label, subLabel = subLabel,
+                button = button, buttonLabel = buttonLabel,
+            };
         }
     }
 }

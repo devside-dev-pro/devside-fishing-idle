@@ -134,6 +134,14 @@ namespace Devside.FishingIdle.Game
             return image;
         }
 
+        /// <summary>Ombre douce sous une carte : le relief qui décolle une ligne du fond.</summary>
+        public static void AddSoftShadow(Graphic graphic, float distance = 3f, float alpha = 0.18f)
+        {
+            var shadow = graphic.gameObject.AddComponent<Shadow>();
+            shadow.effectColor = new Color(0.04f, 0.12f, 0.18f, alpha);
+            shadow.effectDistance = new Vector2(0f, -distance);
+        }
+
         /// <summary>Contour sombre « cartoon » sur un texte.</summary>
         public static void AddOutline(Text text, float thickness = 1.6f)
         {
@@ -142,32 +150,54 @@ namespace Devside.FishingIdle.Game
             outline.effectDistance = new Vector2(thickness, -thickness);
         }
 
+        /// <summary>Hauteur de la tranche d'un bouton : c'est elle qui donne le volume.</summary>
+        const float ButtonDepth = 10f;
+
         /// <summary>
-        /// Bouton « candy » (référence : jeux mobiles modernes) : face colorée vive sur
-        /// une ombre dure de la même teinte assombrie qui dépasse en bas — l'effet
-        /// « pressable » 3D — texte gras blanc à contour, icône optionnelle.
+        /// Bouton de jeu mobile, en trois couches : une TRANCHE sombre en bas (le volume),
+        /// une FACE colorée posée dessus, et un REFLET clair sur sa moitié haute (la
+        /// lumière). Sous le doigt, la face descend jusqu'à recouvrir sa tranche —
+        /// le bouton s'enfonce vraiment, c'est ce retour tactile qui fait la différence
+        /// entre un jeu et une liste de liens.
         /// </summary>
         public static (Button button, Text label, RectTransform rect) CreateFancyButton(
             string name, Transform parent, Color fill, int fontSize, Sprite icon = null)
         {
-            var border = CreateCard(name, parent, new Color(fill.r * 0.55f, fill.g * 0.55f, fill.b * 0.55f, fill.a));
-            var inner = CreateCard("Inner", border.transform, fill, shadow: false);
-            Stretch(inner.rectTransform, 0, 0, 0, 8);
+            // Tranche : la même teinte, nettement assombrie et désaturée vers le sombre.
+            var edge = CreateCard(name, parent, new Color(fill.r * 0.52f, fill.g * 0.52f, fill.b * 0.52f, fill.a));
+            var face = CreateCard("Face", edge.transform, fill, shadow: false);
+            Stretch(face.rectTransform, 0, 0, 0, ButtonDepth);
 
-            var button = border.gameObject.AddComponent<Button>();
-            button.targetGraphic = inner;
+            var button = edge.gameObject.AddComponent<Button>();
+            button.targetGraphic = face;
             var colors = button.colors;
-            colors.disabledColor = new Color(0.5f, 0.55f, 0.6f, 0.75f);
-            colors.pressedColor = new Color(0.75f, 0.75f, 0.75f);
+            colors.normalColor = Color.white;
+            colors.highlightedColor = Color.white;
+            // Pas de teinte au clic : c'est le DÉPLACEMENT qui signale l'appui (PressEffect),
+            // un assombrissement en plus rendrait le bouton terne.
+            colors.pressedColor = Color.white;
+            colors.selectedColor = Color.white;
+            colors.disabledColor = new Color(0.62f, 0.66f, 0.70f, 0.9f);
+            colors.fadeDuration = 0.05f;
             button.colors = colors;
 
-            var label = CreateText("Label", inner.transform, fontSize, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            // Reflet : une bande claire sur la moitié haute de la face. C'est ce qui
+            // donne l'aspect « bonbon » des références, pour un seul Image de plus.
+            var gloss = CreateCard("Gloss", face.transform, new Color(1f, 1f, 1f, 0.22f), shadow: false);
+            gloss.raycastTarget = false;
+            var glossRt = gloss.rectTransform;
+            glossRt.anchorMin = new Vector2(0f, 0.5f);
+            glossRt.anchorMax = new Vector2(1f, 1f);
+            glossRt.offsetMin = new Vector2(8f, 0f);
+            glossRt.offsetMax = new Vector2(-8f, -7f);
+
+            var label = CreateText("Label", face.transform, fontSize, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
             AddOutline(label);
             Stretch(label.rectTransform);
 
             if (icon != null)
             {
-                var iconImage = CreateRect("Icon", inner.transform).gameObject.AddComponent<Image>();
+                var iconImage = CreateRect("Icon", face.transform).gameObject.AddComponent<Image>();
                 iconImage.sprite = icon;
                 iconImage.preserveAspect = true;
                 iconImage.raycastTarget = false;
@@ -175,13 +205,53 @@ namespace Devside.FishingIdle.Game
                 iconRt.anchorMin = new Vector2(0.5f, 1f);
                 iconRt.anchorMax = new Vector2(0.5f, 1f);
                 iconRt.pivot = new Vector2(0.5f, 1f);
-                iconRt.anchoredPosition = new Vector2(0f, -12f);
-                iconRt.sizeDelta = new Vector2(54f, 54f);
+                iconRt.anchoredPosition = new Vector2(0f, -10f);
+                iconRt.sizeDelta = new Vector2(56f, 56f);
                 label.alignment = TextAnchor.LowerCenter;
-                label.rectTransform.offsetMin = new Vector2(0f, 14f);
+                label.rectTransform.offsetMin = new Vector2(0f, 10f);
             }
 
-            return (button, label, border.rectTransform);
+            var press = edge.gameObject.AddComponent<PressEffect>();
+            press.face = face.rectTransform;
+            press.button = button;
+            press.depth = ButtonDepth - 2f;
+
+            return (button, label, edge.rectTransform);
+        }
+
+        /// <summary>
+        /// Pastille ronde colorée portant une icône — la vignette des jeux mobiles, qui
+        /// donne du poids à une ligne de liste là où une icône nue se perd.
+        /// </summary>
+        public static Image CreateIconBadge(Transform parent, Sprite icon, Color tint, float size)
+        {
+            var badge = CreateRect("Badge", parent).gameObject.AddComponent<Image>();
+            badge.sprite = Circle;
+            badge.color = tint;
+            badge.raycastTarget = false;
+            badge.rectTransform.anchorMin = new Vector2(0f, 0.5f);
+            badge.rectTransform.anchorMax = new Vector2(0f, 0.5f);
+            badge.rectTransform.sizeDelta = new Vector2(size, size);
+
+            var shine = CreateRect("Shine", badge.transform).gameObject.AddComponent<Image>();
+            shine.sprite = Circle;
+            shine.color = new Color(1f, 1f, 1f, 0.20f);
+            shine.raycastTarget = false;
+            shine.rectTransform.anchorMin = new Vector2(0.5f, 1f);
+            shine.rectTransform.anchorMax = new Vector2(0.5f, 1f);
+            shine.rectTransform.pivot = new Vector2(0.5f, 1f);
+            shine.rectTransform.anchoredPosition = new Vector2(0f, -size * 0.08f);
+            shine.rectTransform.sizeDelta = new Vector2(size * 0.66f, size * 0.34f);
+
+            if (icon != null)
+            {
+                var image = CreateRect("Icon", badge.transform).gameObject.AddComponent<Image>();
+                image.sprite = icon;
+                image.preserveAspect = true;
+                image.raycastTarget = false;
+                Stretch(image.rectTransform, size * 0.16f, size * 0.16f, size * 0.16f, size * 0.16f);
+            }
+            return badge;
         }
 
         public static RectTransform CreateRect(string name, Transform parent)
