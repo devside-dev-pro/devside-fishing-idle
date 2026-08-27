@@ -1026,9 +1026,8 @@ namespace Devside.FishingIdle.Game
 
         AdRow BuildAdRow(Transform parent, RewardedAdDef def)
         {
-            var (_, _, detail, button, label) =
-                BuildStoreRow(parent, GameTheme.ShopIcon(def.id), GameTheme.AdName(def.id), CastGreen);
-            button.onClick.AddListener(() =>
+            var row = BuildStoreRow(parent, GameTheme.ShopIcon(def.id), GameTheme.AdName(def.id), CastGreen);
+            row.button.onClick.AddListener(() =>
             {
                 var boot = GameBootstrap.Instance;
                 // Pas encore de SDK de pub : on encaisse directement la récompense.
@@ -1037,30 +1036,28 @@ namespace Devside.FishingIdle.Game
                 if (Shop.ClaimAdReward(boot.Config, boot.State, def.id))
                     ShowBanner(string.Format(GameTheme.AdClaimedFormat, GameTheme.AdName(def.id)));
             });
-            return new AdRow { def = def, detail = detail, action = button, actionLabel = label };
+            return new AdRow { def = def, detail = row.detail, action = row.button, actionLabel = row.label };
         }
 
         BoostRow BuildBoostRow(Transform parent, BoostDef def)
         {
-            var (_, _, detail, button, label) =
-                BuildStoreRow(parent, GameTheme.ShopIcon(def.id), GameTheme.BoostName(def.id), TabBlue);
-            label.text = $"{Numbers.Format(def.pearlCost)} {GameTheme.PearlSuffix}";
-            button.onClick.AddListener(() =>
+            var row = BuildStoreRow(parent, GameTheme.ShopIcon(def.id), GameTheme.BoostName(def.id), TabBlue);
+            row.label.text = $"{Numbers.Format(def.pearlCost)} {GameTheme.PearlSuffix}";
+            row.button.onClick.AddListener(() =>
             {
                 var boot = GameBootstrap.Instance;
                 if (Shop.BuyBoost(boot.Config, boot.State, def.id))
                     ShowBanner(string.Format(GameTheme.BoostStartedFormat, GameTheme.BoostName(def.id)));
             });
-            return new BoostRow { def = def, detail = detail, action = button };
+            return new BoostRow { def = def, detail = row.detail, action = row.button };
         }
 
         PearlChestRow BuildPearlChestRow(Transform parent, ChestDef def)
         {
-            var (_, _, detail, button, label) =
-                BuildStoreRow(parent, GameTheme.EquipmentIcon(def.id), GameTheme.ChestName(def.id), PrestigeOrange);
-            label.text = $"{Numbers.Format(def.pearlCost)} {GameTheme.PearlSuffix}";
-            detail.text = GameTheme.ChestPearlHint;
-            button.onClick.AddListener(() =>
+            var row = BuildStoreRow(parent, GameTheme.EquipmentIcon(def.id), GameTheme.ChestName(def.id), PrestigeOrange);
+            row.label.text = $"{Numbers.Format(def.pearlCost)} {GameTheme.PearlSuffix}";
+            row.detail.text = GameTheme.ChestPearlHint;
+            row.button.onClick.AddListener(() =>
             {
                 var boot = GameBootstrap.Instance;
                 var result = Shop.OpenChestWithPearls(boot.Config, boot.State, def.id, Random.value);
@@ -1069,7 +1066,7 @@ namespace Devside.FishingIdle.Game
                     GameTheme.EquipmentName(result.equipmentId),
                     result.isNew ? GameTheme.ChestNewPiece : GameTheme.ChestDuplicate));
             });
-            return new PearlChestRow { def = def, action = button };
+            return new PearlChestRow { def = def, action = row.button };
         }
 
         /// <summary>
@@ -1078,14 +1075,13 @@ namespace Devside.FishingIdle.Game
         /// </summary>
         void BuildPackRow(Transform parent, PearlPackDef def)
         {
-            var (_, _, detail, button, label) =
-                BuildStoreRow(parent, "pearl", GameTheme.PackName(def.id), TabBlue);
+            var row = BuildStoreRow(parent, "pearl", GameTheme.PackName(def.id), TabBlue);
             double total = def.pearls + def.bonusPearls;
-            detail.text = def.bonusPearls > 0
+            row.detail.text = def.bonusPearls > 0
                 ? string.Format(GameTheme.PackBonusFormat, Numbers.Format(total), Numbers.Format(def.bonusPearls))
                 : string.Format(GameTheme.PackPlainFormat, Numbers.Format(total));
-            label.text = def.priceLabel;
-            button.interactable = false;
+            row.label.text = def.priceLabel;
+            row.button.interactable = false;
         }
 
         /// <summary>Compte à rebours lisible : « 3 min 20 s », « 1 h 05 ».</summary>
