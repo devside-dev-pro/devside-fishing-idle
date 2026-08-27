@@ -76,10 +76,13 @@ namespace Devside.FishingIdle.Core
         {
             var result = new CatchResult();
 
-            // Cale pleine : rien ne rentre (il faut vendre). Avec la vente auto le stock
-            // est vidé à chaque tick, donc cette limite ne mord qu'en début de partie.
+            // Cale pleine : rien ne rentre (il faut rentrer vendre). Le seuil n'est pas
+            // zéro mais UNE prise entière : sous ce reste, on rendait une fraction de
+            // poisson, affichée « +0 » — le joueur clique et croit le jeu cassé (retour
+            // playtest). Et ce départ doit précéder le tirage d'espèce, sinon une
+            // découverte (et ses perles) serait brûlée sur une prise qui n'entre pas.
             double space = Multipliers.HoldCapacity(config, state) - state.TotalFishStock;
-            if (space <= 0) return result;
+            if (space < System.Math.Min(1, config.baseManualCatch)) return result;
 
             var species = Catching.PickSpecies(config, state, roll);
             double amount = config.baseManualCatch * Multipliers.ManualCatch(config, state);

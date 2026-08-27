@@ -121,7 +121,7 @@ namespace Devside.FishingIdle.Game
     /// jusqu'à masquer sa tranche, exactement comme une touche mécanique. Posé par
     /// UiKit.CreateFancyButton sur la face du bouton ; inerte si le bouton est désactivé.
     /// </summary>
-    public class PressEffect : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
+    public class PressEffect : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
     {
         /// <summary>Face colorée du bouton (celle qui descend), et sa position au repos.</summary>
         public RectTransform face;
@@ -148,7 +148,22 @@ namespace Devside.FishingIdle.Game
             Apply(-depth);
         }
 
-        public void OnPointerUp(PointerEventData eventData)
+        public void OnPointerUp(PointerEventData eventData) => Release();
+
+        /// <summary>Le doigt a glissé hors du bouton : il remonte, comme sur un vrai clavier.</summary>
+        public void OnPointerExit(PointerEventData eventData) => Release();
+
+        void OnDisable() => Release();
+
+        void Update()
+        {
+            // Ceinture et bretelles : si le relâchement s'est perdu (panneau ouvert
+            // par-dessus, doigt sorti de l'écran), un bouton resterait enfoncé pour
+            // toujours. Dès qu'aucun contact n'est actif, il remonte.
+            if (_pressed && !Input.GetMouseButton(0) && Input.touchCount == 0) Release();
+        }
+
+        void Release()
         {
             if (!_pressed) return;
             _pressed = false;
