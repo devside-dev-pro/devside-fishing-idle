@@ -81,6 +81,22 @@ namespace Devside.FishingIdle.Core.Tests
         }
 
         [Test]
+        public void CastLine_RefusesToSplitAFish()
+        {
+            // Cale à moins d'une unité de la limite : on ne rend pas une fraction de
+            // poisson (le joueur ne verrait qu'un « +0 » incompréhensible), et surtout
+            // on ne consomme ni espèce ni découverte.
+            var config = SmallHoldConfig(10);
+            var state = new GameState { rawFish = 9.6 };
+
+            var result = Simulation.CastLine(config, state, 0.5);
+
+            Assert.That(result.amount, Is.EqualTo(0).Within(1e-9));
+            Assert.That(result.speciesId, Is.Null, "aucune espèce tirée pour une prise qui n'entre pas");
+            Assert.That(state.rawFish, Is.EqualTo(9.6).Within(1e-9));
+        }
+
+        [Test]
         public void CastLine_CatchesNothingWhenHoldIsFull()
         {
             var config = SmallHoldConfig(5);
